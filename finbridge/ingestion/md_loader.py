@@ -5,7 +5,7 @@ import os
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.vectorstores import VectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from vectorstore.client import QdrantService
+from vectorstore.client import get_qdrant_vector_store
 
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "../docs")
 
@@ -34,7 +34,7 @@ class DocsDirectoryIngestion:
         chunks = splitter.split_documents(docs)
         print(f"Чанков после разбивки: {len(chunks)}")
 
-        vector_store: VectorStore = QdrantService.init_qdrant_vector_store()
+        vector_store: VectorStore = get_qdrant_vector_store()
         vector_store.add_documents(chunks)
         print("Индексация завершена.")
 

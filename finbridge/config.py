@@ -10,10 +10,16 @@ DOTENV = os.path.join(os.path.dirname(__file__), "../.env")
 class Settings(BaseSettings):
     """Здесь происходит валидация и агрегация всех ключей и базовых констант."""
 
+    # Конфиги векторной БД
     EMBEDDINGS_MODEL_NAME: str = Field(description="Модель используемая в качестве генерации embeddings.", min_length=3)
     QDRANT_HOST: str = Field(description="Хост до контейнера с Qdrant", default="http://localhost")
     QDRANT_PORT: int = Field(description="Порт, на котором слушает Qdrant", default=6333)
     QDRANT_COLLECTION_NAME: str = Field(description="Название основной коллекции документов", min_length=5)
+
+    # Конфиги LLM модели
+    AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
+    BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434/v1")
+    MODEL: str = Field(description="Модель используемая под капотом агента", default="qwen2.5:7B")
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 
