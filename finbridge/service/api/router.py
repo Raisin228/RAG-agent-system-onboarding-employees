@@ -3,8 +3,8 @@
 from fastapi import APIRouter
 from langchain_core.messages import AIMessage, ToolMessage
 
-from agent.rag_agent import agent
-from application.chat.models import InsightResponse, InsightRequest, SourceDocument
+from service.agent.rag_agent import agent
+from service.api.models import InsightResponse, InsightRequest, SourceDocument
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 

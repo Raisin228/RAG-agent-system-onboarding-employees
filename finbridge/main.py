@@ -1,8 +1,8 @@
 """Точка входа в API-приложение. Атрошенко Б. С."""
+import uvicorn
 
 from fastapi import FastAPI
-from application.chat.router import router as chat_router
-import uvicorn
+from service.api.router import router as chat_router
 
 app = FastAPI(
     contact={
@@ -20,3 +20,4 @@ if __name__ == "__main__":
 
 # TODO: добавить возможность физически обновлять RAG базу. Например: при помощи добавления новых документов.
 #  В таком случае нужно подумать над обновлением сущ. чанков.
+#  - Добавить память для бота

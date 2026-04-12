@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434/v1")
     MODEL: str = Field(description="Модель используемая под капотом агента", default="qwen2.5:7B")
 
+    # Настройки Frontend
+    API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000/chat/create_insight")
+
     model_config = SettingsConfigDict(env_file=DOTENV)
 
 

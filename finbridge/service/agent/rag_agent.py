@@ -5,8 +5,8 @@ from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 
 from config import settings
-from utils import load_prompt
-from vectorstore.client import get_qdrant_vector_store
+from service.utils import load_prompt
+from service.vectorstore.client import get_qdrant_vector_store
 
 
 @tool(response_format="content_and_artifact")

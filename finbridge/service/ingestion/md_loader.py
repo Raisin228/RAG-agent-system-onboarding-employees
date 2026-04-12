@@ -5,7 +5,7 @@ import os
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.vectorstores import VectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from vectorstore.client import get_qdrant_vector_store
+from service.vectorstore.client import get_qdrant_vector_store
 
 DOCS_DIR = os.path.join(os.path.dirname(__file__), "../docs")
 
