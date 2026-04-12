@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     # Конфиги LLM модели
     AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
     BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434/v1")
-    MODEL: str = Field(description="Модель используемая под капотом агента", default="qwen2.5:7B")
+    MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:8b")
 
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000/chat/create_insight")

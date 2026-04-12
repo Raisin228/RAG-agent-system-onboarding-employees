@@ -1,7 +1,10 @@
 """Точка входа в API-приложение. Атрошенко Б. С."""
+import logging
 import uvicorn
 
 from fastapi import FastAPI
+
+logging.basicConfig(level=logging.INFO)
 from service.api.router import router as chat_router
 
 app = FastAPI(

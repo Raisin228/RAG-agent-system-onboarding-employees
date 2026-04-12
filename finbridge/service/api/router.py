@@ -1,9 +1,8 @@
 """Ручки для получения чата. Атрошенко Б. С."""
 
 from fastapi import APIRouter
-from langchain_core.messages import AIMessage, ToolMessage
 
-from service.agent.rag_agent import agent
+from service.agent.rag_agent import chain
 from service.api.models import InsightResponse, InsightRequest, SourceDocument
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -11,25 +10,14 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 
 @router.post(path="/create_insight", response_model=InsightResponse)
 def create_insight(request: InsightRequest) -> InsightResponse:
-    """Задать вопрос агенту — агент ищет релевантные документы и формирует ответ."""
-    result = agent.invoke({"messages": [{"role": "user", "content": request.query}]})
+    """Задать вопрос агенту — цепочка сама извлекает контекст из RAG и формирует ответ."""
+    result = chain.invoke({"question": request.query})
+    # result["answer"] — AIMessage от LLM
+    # result["docs"]   — list[Document] из Qdrant
 
-    # Финальный текстовый ответ — AIMessage в цепочке
-    final_message = next(
-        msg for msg in reversed(result["messages"])
-        if isinstance(msg, AIMessage)
-    )
+    sources = [
+        SourceDocument(content=doc.page_content, metadata=doc.metadata)
+        for doc in result["docs"]
+    ]
 
-    # Документы-источники из ToolMessage (артефакты retrieve_context)
-    sources: list[SourceDocument] = []
-    for msg in result["messages"]:
-        if isinstance(msg, ToolMessage) and msg.artifact:
-            for doc in msg.artifact:
-                sources.append(
-                    SourceDocument(
-                        content=doc.page_content,
-                        metadata=doc.metadata,
-                    )
-                )
-
-    return InsightResponse(answer=final_message.content, sources=sources)
+    return InsightResponse(answer=result["answer"].content, sources=sources)
