@@ -1,11 +1,19 @@
 """Точка входа в API-приложение. Атрошенко Б. С."""
 import logging
+from contextlib import asynccontextmanager
+
 import uvicorn
 
 from fastapi import FastAPI
-
-logging.basicConfig(level=logging.INFO)
 from service.api.router import router as chat_router
+
+
+@asynccontextmanager
+async def lifespan(_application: FastAPI):
+    """Код исполняемый до | после запуска приложения."""
+    logging.basicConfig(level=logging.INFO)
+    yield
+
 
 app = FastAPI(
     contact={
@@ -14,6 +22,7 @@ app = FastAPI(
         "email": "bogdanatrosenko@gmail.com",
     },
     title="FinBridgeRAGSystem 🛟",
+    lifespan=lifespan
 )
 
 app.include_router(chat_router)

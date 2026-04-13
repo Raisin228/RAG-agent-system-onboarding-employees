@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from service.agent.rag_agent import chain
+from service.bot import agent
 from service.api.models import InsightResponse, InsightRequest, SourceDocument
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 @router.post(path="/create_insight", response_model=InsightResponse)
 def create_insight(request: InsightRequest) -> InsightResponse:
     """Задать вопрос агенту — цепочка сама извлекает контекст из RAG и формирует ответ."""
-    result = chain.invoke({"question": request.query})
+    result = agent.answer(request.query)
     # result["answer"] — AIMessage от LLM
     # result["docs"]   — list[Document] из Qdrant
 
@@ -20,4 +20,4 @@ def create_insight(request: InsightRequest) -> InsightResponse:
         for doc in result["docs"]
     ]
 
-    return InsightResponse(answer=result["answer"].content, sources=sources)
+    return InsightResponse(answer=result["answer"], sources=sources)

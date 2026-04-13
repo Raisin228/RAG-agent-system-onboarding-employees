@@ -18,7 +18,10 @@ def get_qdrant_vector_store() -> VectorStore:
     """
 
     # Локальная модель через sentence-transformers, без OpenAI
-    embeddings = HuggingFaceEmbeddings(model_name=settings.EMBEDDINGS_MODEL_NAME)
+    embeddings = HuggingFaceEmbeddings(
+        model_name=settings.EMBEDDINGS_MODEL_NAME,
+        model_kwargs={"local_files_only": True}
+    )
     vector_size: int = embeddings._client.get_sentence_embedding_dimension()
 
     client = QdrantClient(url=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
