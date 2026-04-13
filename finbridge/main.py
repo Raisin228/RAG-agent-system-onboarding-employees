@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 import uvicorn
 
 from fastapi import FastAPI
-from service.api.router import router as chat_router
+from service.api.chat import router as chat_router
+from service.api.Documents import router as docs_router
 
 
 @asynccontextmanager
@@ -26,6 +27,7 @@ app = FastAPI(
 )
 
 app.include_router(chat_router)
+app.include_router(docs_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
@@ -33,3 +35,5 @@ if __name__ == "__main__":
 # TODO: добавить возможность физически обновлять RAG базу. Например: при помощи добавления новых документов.
 #  В таком случае нужно подумать над обновлением сущ. чанков.
 #  - Добавить память для бота
+#  - Перевести на LangGraph вместо if
+#  - Добавить роли и доступы. Чтоб не все могли менять структуру документов.

@@ -3,7 +3,7 @@
 from fastapi import APIRouter
 
 from service.bot import agent
-from service.api.models import InsightResponse, InsightRequest, SourceDocument
+from service.api.chat.models import InsightResponse, InsightRequest, SourceDocument
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 

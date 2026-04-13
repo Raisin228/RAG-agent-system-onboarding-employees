@@ -5,7 +5,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from service.utils import load_prompt
-from service.vectorstore.client import get_qdrant_vector_store
+from service.vectorstore.client import QdrantService
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class AgenticToolset:
         :return: удобное строковое представление набранных чанков и список самих документов.
         """
         logger.info("---[RAG]--- retrieve_context вызван с query=%r", usr_req["question"])
-        retrieved_docs = get_qdrant_vector_store().similarity_search(usr_req.get('question'), k=10)
+        retrieved_docs = QdrantService.get_qdrant_vector_store().similarity_search(usr_req.get('question'), k=10)
         logger.info("---[RAG]--- найдено чанков: %d", len(retrieved_docs))
         serialized = "\n\n".join(
             f"Source: {doc.metadata}\nContent: {doc.page_content}"
