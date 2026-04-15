@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000/chat/create_insight")
+    GRADIO_PORT: int = Field(description="Порт для Градио")
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 

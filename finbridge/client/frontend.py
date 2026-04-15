@@ -2,8 +2,9 @@
 
 import gradio as gr
 
-from tabs.chat_tab import build_chat_tab
-from tabs.documents_tab import build_documents_tab
+from client.tabs.chat_tab import build_chat_tab
+from client.tabs.documents_tab import DocTabUI
+from config import settings
 
 with gr.Blocks(title="FinBridge RAG Assistant") as demo:
     gr.Markdown("# FinBridge RAG Assistant")
@@ -13,7 +14,7 @@ with gr.Blocks(title="FinBridge RAG Assistant") as demo:
             build_chat_tab()
 
         with gr.Tab("Документы"):
-            build_documents_tab(demo)
+            DocTabUI.build_documents_tab(demo)
 
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860, theme=gr.themes.Soft())
+    demo.launch(server_name="0.0.0.0", server_port=settings.GRADIO_PORT, theme=gr.themes.Soft())
