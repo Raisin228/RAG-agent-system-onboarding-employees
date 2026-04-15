@@ -1,11 +1,14 @@
 """Эндпоинты для управления документами RAG. Атрошенко Б. С."""
 
 import os
+from typing import List
 
 from fastapi import APIRouter, HTTPException, UploadFile, File
 
 from service.RAG.docs_service import DocsDirectoryIngestion, DOCS_DIR
-from service.api.Documents.models import DocumentsListResponse, DocumentsSummary, DocumentEntry, UploadResponse
+from service.api.Documents.models import DocumentsListResponse, DocumentsSummary, DocumentEntry, UploadResponse, \
+    DeletedChunkDoc, DeleteDocsVectorStore
+from service.api.core.responses import BAD_REQUEST
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
@@ -61,3 +64,25 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
         size_bytes=len(content),
         message="Файл сохранён. Запустите синхронизацию для индексации в Qdrant.",
     )
+
+
+@router.delete("/documents/delete", response_model=List[DeletedChunkDoc], responses=BAD_REQUEST)
+async def delete_docs(docs_ids: List[DeleteDocsVectorStore]) -> List[DeletedChunkDoc]:
+    """
+    Получает список идентификаторов [названий]
+    документов и удаляет эти доки и все их points из Qdrant.
+
+    :param docs_ids: список из идентификаторов.
+    :return список с данными по удалённым документам.
+    """
+
+    uniq_docs = set(map(lambda pobj: pobj.required_file_name, docs_ids))
+    if not uniq_docs:
+        return []
+
+    if any(map(lambda n: not (n or "").endswith(".md"), uniq_docs)):
+        raise HTTPException(status_code=400, detail="Принимаются только .md файлы")
+    return [DeletedChunkDoc(**statistic) for statistic in DocsDirectoryIngestion.erase_docs(uniq_docs)]
+
+# сделать ручку для переиндексации доков и загрузки существующих доков с ФС
+# Разобраться с проблемой роста числа чанков - кажется что это происходит при переинициализации

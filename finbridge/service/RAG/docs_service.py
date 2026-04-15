@@ -1,12 +1,17 @@
 """Серивис загрузки, индексация и работы с докуменами на ФС. Атрошенко Б. С."""
 
 import os
+import logging
+from pathlib import Path
 
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_core.vectorstores import VectorStore
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from dataclasses import dataclass
 from datetime import datetime
+
+from qdrant_client.http.exceptions import UnexpectedResponse
+from qdrant_client.http.models import Filter, FieldCondition, MatchValue, FilterSelector
 
 from config import settings
 from qdrant_client import QdrantClient
@@ -16,6 +21,8 @@ from service.vectorstore.client import QdrantService
 DOCS_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "../../../docs")
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -57,6 +64,28 @@ class DocsDirectoryIngestion:
         vector_store: VectorStore = QdrantService.get_qdrant_vector_store()
         vector_store.add_documents(chunks)
         print("Индексация завершена.")
+
+    @staticmethod
+    def erase_docs(doc_names: set):
+        """
+        Выполнить весь цикл удаления:
+            * Удалить пойнты из Qdrant.
+            * Удалить доки из ФС.
+
+        :param doc_names: множ-во названий доков.
+        """
+
+        res = []
+        doc_names = list(doc_names)
+        # удалил из Qdrant'а + удалил с ФС
+        for doc in doc_names:
+            removed_chunks = DocsDirectoryIngestion._rm_points_by_source(doc)
+            fs_remove_resp = DocsDirectoryIngestion._rm_doc_file_system(doc)
+
+            removed_chunks["deleted_FS"] = fs_remove_resp.get("deleted_FS")
+            res.append(removed_chunks)
+
+        return res
 
     @staticmethod
     def get_documents_info() -> tuple[list[DocumentInfo], dict]:
@@ -143,6 +172,52 @@ class DocsDirectoryIngestion:
                 break
 
         return counts
+
+    @staticmethod
+    def _rm_doc_file_system(doc: str) -> dict:
+        """
+        Удаляю документ с ФС.
+
+        :param doc: название удаляемого документа.
+        :return удалось ли удалить док.
+        """
+
+        path = Path(DOCS_DIR) / doc
+        if path.exists():
+            path.unlink()
+            return {"filename": doc, "deleted_FS": True}
+        return {"filename": doc, "deleted_FS": False}
+
+    @staticmethod
+    def _rm_points_by_source(file_name: str) -> dict:
+        """
+        Удалить все точки из Qdrant, относящиеся к файлу file_name.
+
+        :param file_name: название файла, чанки которого мы должны удалить.
+        :return: словарь с результатами удаления.
+        """
+        full_path = os.path.join(DOCS_DIR, file_name)
+        client = QdrantService.get()
+        filter_chunks = Filter(
+            must=[FieldCondition(key="metadata.source", match=MatchValue(value=full_path))]
+        )
+
+        chunks_before, _ = client.scroll(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            scroll_filter=filter_chunks
+        )
+
+        if not chunks_before:
+            return {"filename": file_name, "deleted_chunks": 0, "found": False}
+
+        try:
+            client.delete(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                points_selector=FilterSelector(filter=filter_chunks)
+            )
+        except UnexpectedResponse:
+            logger.error("Не удалось выполнить удаление чанков документа. Вероятнр указано не верное хранилище!")
+        return {"filename": file_name, "deleted_chunks": len(chunks_before), "found": True}
 
 
 DocsDirectoryIngestion.docs_load()

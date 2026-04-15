@@ -1,5 +1,5 @@
 """Модельки для запроса | ответа по документам. Атрошенко Б. С."""
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class DocumentEntry(BaseModel):
@@ -34,3 +34,18 @@ class UploadResponse(BaseModel):
     filename: str
     size_bytes: int
     message: str
+
+
+class DeleteDocsVectorStore(BaseModel):
+    """Отправить запрос на удаление части документов из хранилища."""
+
+    required_file_name: str = Field(description="Файл на удаление. С расширением md", default="text.md")
+
+
+class DeletedChunkDoc(BaseModel):
+    """Статистика по удалённым чанкам в рамках одного документа."""
+
+    filename: str = Field(description="Название файла + расширение", default="some.md")
+    found: bool = Field(description="Нашёлся ли такой документ?", default=False)
+    deleted_chunks: int = Field(description="Кол-во удалённых chunks | points", default=0)
+    deleted_FS: bool = Field(description="Был ли удалён документ с ФС?", default=False)
