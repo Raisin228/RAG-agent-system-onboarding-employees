@@ -10,6 +10,7 @@ _base_url = settings.API_URL.split("/chat/")[0]
 _LIST_URL = f"{_base_url}/admin/documents"
 _UPLOAD_URL = f"{_base_url}/admin/documents/upload"
 _DELETE_URL = f"{_base_url}/admin/documents/delete"
+_REINDEX_URL = f"{_base_url}/admin/documents/reindex"
 
 _TABLE_HEADERS = ["", "Файл", "Размер", "Чанков", "Проиндексирован", "Обновлён"]
 _TABLE_DTYPES = ["bool", "str", "str", "number", "str", "str"]
@@ -31,15 +32,17 @@ class DocTabUI:
 
         docs_table = gr.Dataframe(
             headers=_TABLE_HEADERS,
-            datatype="str",
+            datatype=_TABLE_DTYPES,  # type: ignore
             interactive=True,
             wrap=True,
         )
 
         with gr.Row():
             refresh_btn = gr.Button("Обновить список", variant="secondary")
+            reindex_btn = gr.Button("Переиндексировать выбранные", variant="primary")
             delete_btn = gr.Button("Удалить выбранные", variant="stop")
 
+        reindex_status = gr.Markdown("")
         delete_status = gr.Markdown("")
 
         gr.Markdown("---\n### Загрузить новый документ (.md)")
@@ -58,6 +61,12 @@ class DocTabUI:
 
         refresh_btn.click(fn=DocTabUI._fetch_documents, outputs=[docs_table, stats_md])
 
+        reindex_btn.click(
+            fn=DocTabUI.reindex_selected,
+            inputs=[docs_table],
+            outputs=[reindex_status, docs_table, stats_md],
+        )
+
         delete_btn.click(
             fn=DocTabUI.delete_selected,
             inputs=[docs_table],
@@ -69,6 +78,48 @@ class DocTabUI:
             inputs=[file_input],
             outputs=[upload_status, docs_table, stats_md],
         )
+
+    @staticmethod
+    def reindex_selected(table_data: Any) -> tuple[str, list[list], str]:
+        """
+        Переиндексировать отмеченные документы через POST /admin/documents/reindex.
+
+        Если ни один документ не отмечен — переиндексируются все.
+
+        :param table_data: текущее содержимое таблицы.
+        :return: сообщение о результате, обновлённая таблица, обновлённая статистика.
+        """
+        payload = None
+        print(type(table_data), table_data)
+
+        if table_data is not None and not table_data.empty:
+            selected = table_data[table_data.iloc[:, 0] == True]
+            if not selected.empty:
+                filenames = selected.iloc[:, 1].tolist()
+                payload = [{"required_file_name": fn} for fn in filenames]
+
+        try:
+            response = httpx.post(_REINDEX_URL, json=payload, timeout=120.0)
+            response.raise_for_status()
+            data = response.json()
+
+            s = data.get("summary", {})
+            scope = "выбранных" if payload else "всех"
+            message = (
+                f"Переиндексация {scope} документов завершена. "
+                f"Документов: **{s.get('total_docs', 0)}**, "
+                f"чанков: **{s.get('total_chunks', 0)}**."
+            )
+        except httpx.HTTPStatusError as e:
+            detail = e.response.json().get("detail", e.response.text)
+            message = f"Ошибка переиндексации ({e.response.status_code}): {detail}"
+        except httpx.ConnectError:
+            message = "Не удалось подключиться к серверу."
+        except Exception as e:
+            message = f"Непредвиденная ошибка: {e}"
+
+        rows, stats = DocTabUI._fetch_documents()
+        return message, rows, stats
 
     @staticmethod
     def delete_selected(table_data: Any) -> tuple[str, list[list], str]:
