@@ -11,35 +11,27 @@ from functools import lru_cache
 
 class QdrantService:
     """Синглтон для работы с Qdrant."""
+
     client = None
+    embeddings = None
 
     @classmethod
     def get(cls) -> QdrantClient:
-        """Получить клиент Qdrant."""
+        """Получить клиента и инициализировать коллекцию Qdrant."""
         if cls.client is None:
             cls.client = QdrantClient(url=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
-        return cls.client
 
-    @classmethod
-    @lru_cache(maxsize=256)
-    def get_qdrant_vector_store(cls) -> VectorStore:
-        """
-        Получение и инициализация векторной БД.
-
-        :return: векторное хранилище.
-        """
-
-        # Локальная модель через sentence-transformers, без OpenAI
-        embeddings = HuggingFaceEmbeddings(
-            model_name=settings.EMBEDDINGS_MODEL_NAME,
-            model_kwargs={"local_files_only": True}
-        )
-        vector_size: int = embeddings._client.get_sentence_embedding_dimension()
-
-        if not QdrantService.get().collection_exists(
+        if not cls.client.collection_exists(
                 collection_name=settings.QDRANT_COLLECTION_NAME
         ):
-            QdrantService.get().create_collection(
+            # Локальная модель через sentence-transformers, без OpenAI
+            cls.embeddings = HuggingFaceEmbeddings(
+                model_name=settings.EMBEDDINGS_MODEL_NAME,
+                model_kwargs={"local_files_only": True}
+            )
+
+            vector_size: int = cls.embeddings._client.get_sentence_embedding_dimension()
+            cls.client.create_collection(
                 collection_name=settings.QDRANT_COLLECTION_NAME,
                 vectors_config=VectorParams(
                     size=vector_size,
@@ -47,8 +39,19 @@ class QdrantService:
                 )
             )
 
+        return cls.client
+
+    @classmethod
+    @lru_cache(maxsize=256)
+    def get_qdrant_vector_store(cls) -> VectorStore:
+        """
+        Клиент для работы с Qdrant данными.
+
+        :return: векторное хранилище.
+        """
+
         return QdrantVectorStore(
             client=QdrantService.get(),
             collection_name=settings.QDRANT_COLLECTION_NAME,
-            embedding=embeddings,
+            embedding=cls.embeddings,
         )

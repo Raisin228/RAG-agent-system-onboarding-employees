@@ -1,34 +1,65 @@
 """Эндпоинты для управления документами RAG. Атрошенко Б. С."""
 
 import os
+from pathlib import Path
 from typing import List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, status
 
 from service.RAG.docs_service import DocsDirectoryIngestion, DOCS_DIR
 from service.api.Documents.models import DocumentsListResponse, DocumentsSummary, DocumentEntry, UploadResponse, \
-    DeletedChunkDoc, DeleteDocsVectorStore
+    DeletedChunkDoc, RequiredDocsInteraction
 from service.api.core.responses import BAD_REQUEST
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
 
 
 @router.get("/documents", response_model=DocumentsListResponse)
-def list_documents() -> DocumentsListResponse:
+async def list_documents() -> DocumentsListResponse:
     """Список всех .md документов из docs/ с данными об индексации из Qdrant."""
     docs, summary = DocsDirectoryIngestion.get_documents_info()
     return DocumentsListResponse(
         summary=DocumentsSummary(**summary),
         documents=[
-            DocumentEntry(
-                filename=d.filename,
-                size_kb=d.size_kb,
-                chunks_count=d.chunks_count,
-                is_indexed=d.is_indexed,
-                last_updated=d.last_updated,
-            )
-            for d in docs
+            DocumentEntry(**d) for d in docs
         ],
+    )
+
+
+@router.post("/documents/reindex")
+async def reindex(filenames: list[RequiredDocsInteraction] | None = None) -> DocumentsListResponse:
+    """
+    Переиндексация документов базы знаний.
+
+    Если filenames передан — переиндексирует только указанные файлы и возвращает статистику по ним.
+    Если filenames не передан — переиндексирует все файлы из data/docs/ и возвращает полную статистику.
+    """
+
+    if filenames:
+        target_names = [f.required_file_name for f in filenames]
+
+        for name in target_names:
+            path = Path(DOCS_DIR) / name
+            if not path.exists():
+                raise HTTPException(status.HTTP_404_NOT_FOUND, f"Файл '{name}' не найден в docs/")
+
+        for name in target_names:
+            DocsDirectoryIngestion.rm_points_by_source(name)
+
+        DocsDirectoryIngestion.docs_load(file_names=target_names)
+        docs, summary = DocsDirectoryIngestion.get_documents_info(file_names=target_names)
+    else:
+        all_names = [f.name for f in Path(DOCS_DIR).glob("*.md")]
+
+        for name in all_names:
+            DocsDirectoryIngestion.rm_points_by_source(name)
+
+        DocsDirectoryIngestion.docs_load()
+        docs, summary = DocsDirectoryIngestion.get_documents_info()
+
+    return DocumentsListResponse(
+        documents=[DocumentEntry(**d) for d in docs],
+        summary=DocumentsSummary(**summary)
     )
 
 
@@ -67,7 +98,7 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
 
 
 @router.delete("/documents/delete", response_model=List[DeletedChunkDoc], responses=BAD_REQUEST)
-async def delete_docs(docs_ids: List[DeleteDocsVectorStore]) -> List[DeletedChunkDoc]:
+async def delete_docs(docs_ids: List[RequiredDocsInteraction]) -> List[DeletedChunkDoc]:
     """
     Получает список идентификаторов [названий]
     документов и удаляет эти доки и все их points из Qdrant.

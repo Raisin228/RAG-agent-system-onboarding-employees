@@ -29,17 +29,17 @@ class DocumentsListResponse(BaseModel):
 
 
 class UploadResponse(BaseModel):
-    """Выгрузить новый документ в RAG."""
+    """Новый документ загружен в RAG."""
 
     filename: str
     size_bytes: int
     message: str
 
 
-class DeleteDocsVectorStore(BaseModel):
-    """Отправить запрос на удаление части документов из хранилища."""
+class RequiredDocsInteraction(BaseModel):
+    """Отправить запрос на удаление | переиндексаци документа из хранилища."""
 
-    required_file_name: str = Field(description="Файл на удаление. С расширением md", default="text.md")
+    required_file_name: str = Field(description="Требуемый файл. С расширением md", default="text.md")
 
 
 class DeletedChunkDoc(BaseModel):
