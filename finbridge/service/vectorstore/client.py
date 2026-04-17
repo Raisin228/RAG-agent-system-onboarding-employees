@@ -21,15 +21,16 @@ class QdrantService:
         if cls.client is None:
             cls.client = QdrantClient(url=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
 
-        if not cls.client.collection_exists(
-                collection_name=settings.QDRANT_COLLECTION_NAME
-        ):
+        if cls.embeddings is None:
             # Локальная модель через sentence-transformers, без OpenAI
             cls.embeddings = HuggingFaceEmbeddings(
                 model_name=settings.EMBEDDINGS_MODEL_NAME,
                 model_kwargs={"local_files_only": True}
             )
 
+        if not cls.client.collection_exists(
+                collection_name=settings.QDRANT_COLLECTION_NAME
+        ):
             vector_size: int = cls.embeddings._client.get_sentence_embedding_dimension()
             cls.client.create_collection(
                 collection_name=settings.QDRANT_COLLECTION_NAME,
@@ -49,9 +50,10 @@ class QdrantService:
 
         :return: векторное хранилище.
         """
+        client = QdrantService.get()
 
         return QdrantVectorStore(
-            client=QdrantService.get(),
+            client=client,
             collection_name=settings.QDRANT_COLLECTION_NAME,
             embedding=cls.embeddings,
         )

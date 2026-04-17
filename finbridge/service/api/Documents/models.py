@@ -1,4 +1,6 @@
 """Модельки для запроса | ответа по документам. Атрошенко Б. С."""
+from typing import List, Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -40,6 +42,19 @@ class RequiredDocsInteraction(BaseModel):
     """Отправить запрос на удаление | переиндексаци документа из хранилища."""
 
     required_file_name: str = Field(description="Требуемый файл. С расширением md", default="text.md")
+
+
+class ReindexRequest(BaseModel):
+    """Тело запроса на переиндексацию документов."""
+
+    filenames: List[RequiredDocsInteraction] | None = Field(
+        default=None,
+        description="Список файлов для переиндексации. Если None — переиндексируются все.",
+    )
+    action: Literal["Index", "Unindex"] = Field(
+        default="Index",
+        description="Index — проиндексировать, Unindex — удалить чанки без загрузки.",
+    )
 
 
 class DeletedChunkDoc(BaseModel):

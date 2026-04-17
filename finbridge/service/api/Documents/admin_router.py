@@ -8,7 +8,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, status
 
 from service.RAG.docs_service import DocsDirectoryIngestion, DOCS_DIR
 from service.api.Documents.models import DocumentsListResponse, DocumentsSummary, DocumentEntry, UploadResponse, \
-    DeletedChunkDoc, RequiredDocsInteraction
+    DeletedChunkDoc, RequiredDocsInteraction, ReindexRequest
 from service.api.core.responses import BAD_REQUEST
 
 router = APIRouter(prefix="/admin", tags=["Admin"])
@@ -27,13 +27,15 @@ async def list_documents() -> DocumentsListResponse:
 
 
 @router.post("/documents/reindex")
-async def reindex(filenames: list[RequiredDocsInteraction] | None = None) -> DocumentsListResponse:
+async def reindex(body: ReindexRequest) -> DocumentsListResponse:
     """
-    Переиндексация документов базы знаний.
+    Переиндексация | Аниндексация документов базы знаний.
 
-    Если filenames передан — переиндексирует только указанные файлы и возвращает статистику по ним.
-    Если filenames не передан — переиндексирует все файлы из data/docs/ и возвращает полную статистику.
+    Если filenames передан — обрабатываем только указанные файлы и возвращаем статистику по ним.
+    Если filenames не передан — работаем со всеми файлами из data/docs/ и возвращаем полную статистику.
     """
+    filenames = body.filenames
+    action = body.action
 
     if filenames:
         target_names = [f.required_file_name for f in filenames]
@@ -46,7 +48,8 @@ async def reindex(filenames: list[RequiredDocsInteraction] | None = None) -> Doc
         for name in target_names:
             DocsDirectoryIngestion.rm_points_by_source(name)
 
-        DocsDirectoryIngestion.docs_load(file_names=target_names)
+        if action == "Index":
+            DocsDirectoryIngestion.docs_load(file_names=target_names)
         docs, summary = DocsDirectoryIngestion.get_documents_info(file_names=target_names)
     else:
         all_names = [f.name for f in Path(DOCS_DIR).glob("*.md")]
@@ -54,7 +57,8 @@ async def reindex(filenames: list[RequiredDocsInteraction] | None = None) -> Doc
         for name in all_names:
             DocsDirectoryIngestion.rm_points_by_source(name)
 
-        DocsDirectoryIngestion.docs_load()
+        if action == "Index":
+            DocsDirectoryIngestion.docs_load()
         docs, summary = DocsDirectoryIngestion.get_documents_info()
 
     return DocumentsListResponse(
