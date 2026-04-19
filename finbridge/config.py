@@ -16,9 +16,12 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = Field(description="Порт, на котором слушает Qdrant", default=6333)
     QDRANT_COLLECTION_NAME: str = Field(description="Название основной коллекции документов", min_length=5)
 
+    # Конфиги Redis
+    REDIS_URL: str = Field(description="Урл для экземпляра Redis", default="http://localhost:6379")
+
     # Конфиги LLM модели
     AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
-    BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434/v1")
+    BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434")
     MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:8b")
 
     # Настройки Frontend

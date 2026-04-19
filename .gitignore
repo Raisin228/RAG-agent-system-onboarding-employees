@@ -3,6 +3,7 @@
 *.idea/
 # Локальное хранилище Qdrant
 data
+ollama
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

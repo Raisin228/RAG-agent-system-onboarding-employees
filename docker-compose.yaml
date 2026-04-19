@@ -6,3 +6,12 @@ services:
       - "6333:6333"
     volumes:
       - ./data/qdrant_storage:/qdrant/storage
+
+  ollama:
+    image: ollama/ollama:0.21.0
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./ollama:/root/.ollama
+    restart: unless-stopped

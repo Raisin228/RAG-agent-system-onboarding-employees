@@ -30,8 +30,8 @@ class State(BaseModel):
 
 class RAGAgent:
     """Точка входа для работы с агентом. Синглтон."""
-
-    _LLM = ChatOllama(model=settings.MODEL, temperature=0, num_predict=4096)
+    # ConversationSummaryBufferMemory - нравится такое V
+    _LLM = ChatOllama(base_url=settings.BASE_URL, model=settings.MODEL, temperature=0, num_predict=4096)
     _PROMPT = ChatPromptTemplate.from_messages([
         ("system", load_prompt("../prompts/rag_tools_explain.txt")),
         ("user", "Context: \n{context}\n\nQuestion: {question}")
