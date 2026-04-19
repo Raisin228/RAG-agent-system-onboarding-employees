@@ -1729,15 +1729,15 @@ tenacity = ">=8.1.0,<8.4.0 || >8.4.0,<10.0.0"
 
 [[package]]
 name = "langchain-core"
-version = "1.2.27"
+version = "1.3.0"
 description = "Building applications with LLMs through composability"
 optional = false
 python-versions = "<4.0.0,>=3.10.0"
 groups = ["main"]
 markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or sys_platform != \"win32\" and sys_platform != \"emscripten\""
 files = [
-    {file = "langchain_core-1.2.27-py3-none-any.whl", hash = "sha256:9ecd6b0393b969fe88f6b9b309367134080ab095946d79e6937dd3911aa42bd5"},
-    {file = "langchain_core-1.2.27.tar.gz", hash = "sha256:c18372e4c4c1454d49bf23a2e484431e71bd39b64173a0f621f0fc283d7183a4"},
+    {file = "langchain_core-1.3.0-py3-none-any.whl", hash = "sha256:baf16ee028475df177b9ab8869a751c79406d64a6f12125b93802991b566cced"},
+    {file = "langchain_core-1.3.0.tar.gz", hash = "sha256:14a39f528bf459aa3aa40d0a7f7f1bae7520d435ef991ae14a4ceb74d8c49046"},
 ]
 
 [package.dependencies]
@@ -1827,19 +1827,19 @@ langchain-core = ">=1.2.13,<2.0.0"
 
 [[package]]
 name = "langgraph"
-version = "1.1.6"
+version = "1.1.8"
 description = "Building stateful, multi-actor applications with LLMs"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 markers = "sys_platform == \"win32\" or sys_platform == \"emscripten\" or sys_platform != \"win32\" and sys_platform != \"emscripten\""
 files = [
-    {file = "langgraph-1.1.6-py3-none-any.whl", hash = "sha256:fdbf5f54fa5a5a4c4b09b7b5e537f1b2fa283d2f0f610d3457ddeecb479458b9"},
-    {file = "langgraph-1.1.6.tar.gz", hash = "sha256:1783f764b08a607e9f288dbcf6da61caeb0dd40b337e5c9fb8b412341fbc0b60"},
+    {file = "langgraph-1.1.8-py3-none-any.whl", hash = "sha256:3278c7e335da25eac3327bb474c502d4cab94ae6dcc685fbf93be2bbf7664cd5"},
+    {file = "langgraph-1.1.8.tar.gz", hash = "sha256:a97b8248129f2e007b81eef8277009ad1e1280b75fa2175889ab5aff5dcc4578"},
 ]
 
 [package.dependencies]
-langchain-core = ">=0.1"
+langchain-core = ">=1.3.0,<2"
 langgraph-checkpoint = ">=2.1.0,<5.0.0"
 langgraph-prebuilt = ">=1.0.9,<1.1.0"
 langgraph-sdk = ">=0.3.0,<0.4.0"
@@ -5417,4 +5417,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13,<4.0"
-content-hash = "8c8bfb2c87dacb8c5f389b718fcfcdde13dbb85b27908d0b8a1f51636ad52abd"
+content-hash = "b6e75bb0bf72a0355c37e82dd09facffd641713b3dbec07daa0bba73c265c701"
