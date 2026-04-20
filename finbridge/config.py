@@ -16,8 +16,9 @@ class Settings(BaseSettings):
     QDRANT_PORT: int = Field(description="Порт, на котором слушает Qdrant", default=6333)
     QDRANT_COLLECTION_NAME: str = Field(description="Название основной коллекции документов", min_length=5)
 
-    # Конфиги Redis
+    # Конфиги Redis [TTL = 1час]
     REDIS_URL: str = Field(description="Урл для экземпляра Redis", default="http://localhost:6379")
+    REDIS_TTL: int = Field(description="Время, в рамках которой хранится история чата в key-value DB", default=60 * 60)
 
     # Конфиги LLM модели
     AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
