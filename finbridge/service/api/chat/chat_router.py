@@ -1,8 +1,11 @@
 """Ручки для получения чата. Атрошенко Б. С."""
+import json
 import logging
 import uuid
+from typing import AsyncGenerator
 
 from fastapi import APIRouter, Depends
+from fastapi.responses import StreamingResponse
 
 from service.api.chat.dependensies import require_session_id
 from service.bot import agent
@@ -12,21 +15,26 @@ router = APIRouter(prefix="/chat", tags=["Chat"])
 logger = logging.getLogger(__name__)
 
 
-@router.post(path="/create_insight", response_model=InsightResponse)
-async def create_insight(request: InsightRequest, session_id: str = Depends(require_session_id)) -> InsightResponse:
-    """Задать вопрос агенту — цепочка сама извлекает контекст из RAG и формирует ответ."""
+@router.post(path="/create_insight_stream")
+async def create_insight_stream(
+        request: InsightRequest, session_id: str = Depends(require_session_id)
+) -> StreamingResponse:
+    """SSE-стриминг токенов от агента."""
 
-    logger.info(f"->$ ID сессии чата, Backend: {session_id}")
-    result = agent.answer(request.query, session_id)
-    # result["answer"] — AIMessage от LLM
-    # result["docs"]   — list[Document] из Qdrant
+    logger.info(f"[stream] ID сессии чата, Backend: {session_id}")
 
-    sources = [
-        SourceDocument(content=doc.page_content, metadata=doc.metadata)
-        for doc in result["docs"]
-    ]
+    async def _generate() -> AsyncGenerator:
+        """Асинхронный генератор для извлечения стриминга LLM."""
+        try:
+            async for event_data in agent.astream_tokens(request.query, session_id):
+                yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
+        except Exception as ex:
+            logger.error(f"[stream] ошибка стриминга {ex}")
+            yield f"data: {json.dumps({"type": "error", "content": str(ex)}, ensure_ascii=False)}\n\n"
 
-    return InsightResponse(answer=result["answer"], sources=sources)
+    return StreamingResponse(
+        _generate(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+    )
 
 
 @router.post(path="/chat/sessions", response_model=GenerateSession)

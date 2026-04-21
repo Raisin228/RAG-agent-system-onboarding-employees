@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:1.5b")
 
     # Настройки Frontend
-    API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000/chat/create_insight")
+    API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000")
     GRADIO_PORT: int = Field(description="Порт для Градио")
 
     model_config = SettingsConfigDict(env_file=DOTENV)

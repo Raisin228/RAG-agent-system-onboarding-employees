@@ -1,10 +1,11 @@
 """Вкладка «Чат» — диалог с RAG-агентом. Атрошенко Б. С."""
 
+import json
+
 import gradio as gr
 import httpx
 
-from client.tabs.const import SESSION_URL
-from config import settings
+from client.tabs.const import SESSION_URL, CHAT_INSIGHT_STREAM
 from service.api.chat.dependensies import SESSION_HEADER
 
 
@@ -53,42 +54,67 @@ class ChatTab:
         return response.json()["user_identity"]
 
     @classmethod
-    def _send_message(cls, message: str, history: list[dict], session_id: str) -> tuple[str, list[dict], str]:
+    def _send_message(cls, message: str, history: list[dict], session_id: str):
         """
-        Отправить сообщение в /chat/create_insight и вернуть обновлённую историю.
+        Стримить ответ агента через SSE и постепенно отдавать токены в gr.Chatbot.
 
         :param message: текст вопроса от пользователя.
         :param history: текущая история диалога.
         :param session_id: id текущей сессии.
-        :return: пустая строка (очищает поле ввода) и обновлённая история.
         """
 
         try:
             session_id = cls._ensure_session(session_id)
-            response = httpx.post(
-                settings.API_URL, headers={SESSION_HEADER: session_id}, json={"query": message}, timeout=10000.0
-            )
-            response.raise_for_status()
-            data = response.json()
-
-            answer = data["answer"]
-            sources = data.get("sources", [])
-
-            if sources:
-                sources_text = "\n\n---\n**Источники:**\n"
-                for i, src in enumerate(sources, 1):
-                    metadata = src.get("metadata", {})
-                    source_name = metadata.get("source", metadata.get("title", f"Документ {i}"))
-                    sources_text += f"- {source_name}\n"
-                answer += sources_text
-
-        except httpx.HTTPStatusError as e:
-            answer = f"Ошибка API ({e.response.status_code}): {e.response.text}"
-        except httpx.ConnectError:
-            answer = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
         except Exception as e:
-            answer = f"Непредвиденная ошибка: {e}"
+            history = list(history) + [
+                {"role": "user", "content": message},
+                {"role": "assistant", "content": f"Ошибка сессии: {e}"},
+            ]
+            yield "", history, session_id
+            return
 
-        history.append({"role": "user", "content": message})
-        history.append({"role": "assistant", "content": answer})
-        return "", history, session_id
+        history = list(history) + [
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": ""},
+        ]
+        yield "", history, session_id
+
+        try:
+            with httpx.stream(
+                "POST",
+                CHAT_INSIGHT_STREAM,
+                headers={SESSION_HEADER: session_id},
+                json={"query": message},
+                timeout=None,
+            ) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line.startswith("data: "):
+                        continue
+                    data = json.loads(line[6:])
+
+                    if data["type"] == "token":
+                        history[-1]["content"] += data["content"]
+                        yield "", history, session_id
+
+                    elif data["type"] == "done":
+                        sources = data.get("sources", [])
+                        if sources:
+                            sources_text = "\n\n---\n**Источники:**\n"
+                            for i, src in enumerate(sources, 1):
+                                meta = src.get("metadata", {})
+                                name = meta.get("source", meta.get("title", f"Документ {i}"))
+                                sources_text += f"- {name}\n"
+                            history[-1]["content"] += sources_text
+                        yield "", history, session_id
+
+                    elif data["type"] == "error":
+                        history[-1]["content"] += f"\n\nОшибка: {data['content']}"
+                        yield "", history, session_id
+
+        except httpx.ConnectError:
+            history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
+            yield "", history, session_id
+        except Exception as e:
+            history[-1]["content"] = f"Непредвиденная ошибка: {e}"
+            yield "", history, session_id

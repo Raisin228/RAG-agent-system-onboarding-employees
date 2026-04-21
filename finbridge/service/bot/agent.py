@@ -9,6 +9,7 @@ from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, START, END
 from pydantic import Field, BaseModel
+from typing_extensions import AsyncGenerator
 
 from config import settings
 from service.ShortTermMemory.redis_storage import RedisHistoryStore
@@ -77,23 +78,51 @@ class RAGAgent:
 
         self._graph = g.compile()
 
-    def answer(self, question: str, session: str) -> dict:
+    async def astream_tokens(self, question: str, session: str) -> AsyncGenerator:
         """
-        Ответить на вопрос пользователя через граф.
+        Стриминг токенов из графа через SSE.
+
+        Генерирует dict-события:
+          {"type": "token",  "content": "..."}   — очередной токен LLM
+          {"type": "done",   "sources": [...]}    — конец, список источников
 
         :param question: вопрос пользователя.
-        :param session: сессия для получения истории в Redis.
-        :return: словарь с полями answer и docs.
+        :param session: сессия Redis.
+        :return: словарь - чанк сгенерированного ответа.
         """
 
         history = RedisHistoryStore.get_last_full_msgs(session)
-        logger.info(f"->$ Полная история: {history}")
         RedisHistoryStore.add_user_msg(session, question)
 
-        result: State = self._graph.invoke(State(history=history, question=question))
+        full_answer = ""
+        docs: List[Document] = []
 
-        RedisHistoryStore.add_ai_message(session, result["answer"])
-        return {"answer": result["answer"], "docs": result["docs"]}
+        async for event in self._graph.astream_events(
+                State(history=history, question=question),
+                version="v2",
+        ):
+            kind = event["event"]
+            node = event.get("metadata", {}).get("langgraph_node", "")
+
+            if kind == "on_chat_model_stream" and node in ("rag", "small_talk"):
+                chunk = event["data"]["chunk"].content
+                if chunk:
+                    full_answer += chunk
+                    yield {"type": "token", "content": chunk}
+
+            elif kind == "on_chain_end" and node == "rag":
+                output = event["data"].get("output", {})
+                if isinstance(output, dict) and "docs" in output:
+                    docs = output["docs"]
+
+        RedisHistoryStore.add_ai_message(session, full_answer)
+        yield {
+            "type": "done",
+            "sources": [
+                {"content": doc.page_content, "metadata": doc.metadata}
+                for doc in docs
+            ],
+        }
 
     def _classify_node(self, state: State) -> dict:
         """Классифицирует намерение и сохраняет в state.intent."""

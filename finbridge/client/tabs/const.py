@@ -2,12 +2,12 @@
 
 from config import settings
 
-base_url = settings.API_URL.split("/chat/")[0]
-LIST_URL = f"{base_url}/admin/documents"
-UPLOAD_URL = f"{base_url}/admin/documents/upload"
-DELETE_URL = f"{base_url}/admin/documents/delete"
-REINDEX_URL = f"{base_url}/admin/documents/reindex"
-SESSION_URL = f"{base_url}/chat/chat/sessions"
+CHAT_INSIGHT_STREAM = f"{settings.API_URL}/chat/create_insight_stream"
+SESSION_URL = f"{settings.API_URL}/chat/chat/sessions"
+LIST_URL = f"{settings.API_URL}/admin/documents"
+REINDEX_URL = f"{settings.API_URL}/admin/documents/reindex"
+UPLOAD_URL = f"{settings.API_URL}/admin/documents/upload"
+DELETE_URL = f"{settings.API_URL}/admin/documents/delete"
 
 TABLE_HEADERS = ["", "Файл", "Размер", "Чанков", "Проиндексирован", "Обновлён"]
 TABLE_DTYPES = ["bool", "str", "str", "number", "str", "str"]
