@@ -2,32 +2,31 @@
 from fastapi import Request
 
 from langchain_community.chat_message_histories import RedisChatMessageHistory
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, BaseMessage
 
 from config import settings
+
 
 # class MemorySummarizer:
 #     """Суммаризатор истории для Redis."""
 #
 #     def summarize(self):
 
-SESSION_HEADER = "X-Session-Id"
-
-
 def get_create_session_id(request: Request):
     ...
+
 
 class RedisHistoryStore:
     """CRUD для редиски."""
 
     @staticmethod
-    def add_ai_message(session_id: str, text: str):
+    def add_ai_message(session_id: str, text: str) -> None:
         """Добавить историю от агента."""
 
         RedisHistoryStore._get_client(session_id).add_message(AIMessage(text))
 
     @staticmethod
-    def add_user_msg(session_id: str, text: str):
+    def add_user_msg(session_id: str, text: str) -> None:
         """Добавить новое сообщение в Redis List."""
 
         RedisHistoryStore._get_client(session_id).add_message(HumanMessage(text))
@@ -39,12 +38,10 @@ class RedisHistoryStore:
         RedisHistoryStore._get_client(session_id).clear()
 
     @staticmethod
-    def get_messages(session_id: str):
-        """Получить сообщения последние N сообщений истории."""
+    def get_last_full_msgs(session_id: str) -> list[BaseMessage]:
+        """Получить сообщения последние 6 сообщений истории."""
 
-        a = RedisHistoryStore._get_client(session_id).messages
-        print(a)
-        return a
+        return RedisHistoryStore._get_client(session_id).messages[-6:]
 
     @staticmethod
     def _get_client(session_id: str):
@@ -58,6 +55,6 @@ class RedisHistoryStore:
         return RedisChatMessageHistory(
             session_id=session_id,
             url=settings.REDIS_URL,
-            key_prefix="chat",
+            key_prefix="chat/",
             ttl=settings.REDIS_TTL
         )

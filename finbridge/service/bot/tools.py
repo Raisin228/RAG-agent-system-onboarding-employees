@@ -26,7 +26,6 @@ class AgenticToolset:
         Возвращает одну из трёх категорий:
         - knowledge_base → вопрос по документам компании → идёт в RAG
         - small_talk     → приветствие, болтовня → LLM отвечает напрямую
-        - out_of_scope   → не связано с работой → вежливый отказ
 
         :param llm: модель для обработки ответа.
         :param question: вопрос пользователя.
@@ -38,13 +37,7 @@ class AgenticToolset:
         # Определяю категорию
         if "knowledge_base" in result:
             return "knowledge_base"
-        elif "small_talk" in result:
-            return "small_talk"
-        elif "out_of_scope" in result:
-            return "out_of_scope"
-        else:
-            return "out_of_scope"
-
+        return "small_talk"
     @classmethod
     def retrieve_context(cls, usr_req: dict) -> dict:
         """
@@ -61,3 +54,5 @@ class AgenticToolset:
             for doc in retrieved_docs
         )
         return {**usr_req, "context": serialized, "docs": retrieved_docs}
+
+

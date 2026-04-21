@@ -17,13 +17,13 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION_NAME: str = Field(description="Название основной коллекции документов", min_length=5)
 
     # Конфиги Redis [TTL = 1час]
-    REDIS_URL: str = Field(description="Урл для экземпляра Redis", default="http://localhost:6379")
+    REDIS_URL: str = Field(description="Урл для экземпляра Redis", default="redis://localhost:6379")
     REDIS_TTL: int = Field(description="Время, в рамках которой хранится история чата в key-value DB", default=60 * 60)
 
     # Конфиги LLM модели
     AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
     BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434")
-    MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:8b")
+    MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:1.5b")
 
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000/chat/create_insight")

@@ -2,7 +2,7 @@
 
 import gradio as gr
 
-from client.tabs.chat_tab import build_chat_tab
+from client.tabs.chat_tab import ChatTab
 from client.tabs.documents_tab import DocTabUI
 from config import settings
 
@@ -11,7 +11,7 @@ with gr.Blocks(title="FinBridge RAG Assistant") as demo:
 
     with gr.Tabs():
         with gr.Tab("Чат"):
-            build_chat_tab()
+            ChatTab.build_chat_tab()
 
         with gr.Tab("Документы"):
             DocTabUI.build_documents_tab(demo)

@@ -8,6 +8,15 @@ class InsightRequest(BaseModel):
     query: str = Field(description="Вопрос пользователя к базе знаний компании", min_length=3)
 
 
+class GenerateSession(BaseModel):
+    """Генерируем сессию для хранения истории чата."""
+
+    user_identity: str = Field(
+        description="Идентификатор сессии пользователя",
+        default="781ea870-40c7-4880-a41e-40acb84c92c2"
+    )
+
+
 class SourceDocument(BaseModel):
     """Данные чанка документа, используемые для ответа."""
 
