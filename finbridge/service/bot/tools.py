@@ -38,6 +38,7 @@ class AgenticToolset:
         if "knowledge_base" in result:
             return "knowledge_base"
         return "small_talk"
+
     @classmethod
     def retrieve_context(cls, usr_req: dict) -> dict:
         """
@@ -46,6 +47,7 @@ class AgenticToolset:
         :param usr_req: запрос на поиск.
         :return: удобное строковое представление набранных чанков и список самих документов.
         """
+
         logger.info("---[RAG]--- retrieve_context вызван с query=%r", usr_req["question"])
         retrieved_docs = QdrantService.get_qdrant_vector_store().similarity_search(usr_req.get('question'), k=10)
         logger.info("---[RAG]--- найдено чанков: %d", len(retrieved_docs))
@@ -54,5 +56,3 @@ class AgenticToolset:
             for doc in retrieved_docs
         )
         return {**usr_req, "context": serialized, "docs": retrieved_docs}
-
-

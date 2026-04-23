@@ -4,6 +4,7 @@ from typing import List
 
 from langchain_core.documents import Document
 from langchain_core.messages import BaseMessage
+from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import RunnableLambda, RunnableParallel
 from langchain_ollama import ChatOllama
@@ -23,6 +24,7 @@ class State(BaseModel):
     """Состояние графа — передаётся между узлами и накапливает результат."""
 
     history: list[BaseMessage] = Field(description="Предыдущие 3 turn'а. По типу: запрос пользователя + ответ агента.")
+    summary: str = Field(description="Суммаризированная история всего чата в рамках сессии.", default="")
     question: str = Field(description="Вопрос пользователя.")
     intent: str = Field(description="Намерение после классификации.", default="")
     answer: str = Field(description="Итоговый ответ бота.", default="")
@@ -39,16 +41,19 @@ class RAGAgent:
     __LLM = ChatOllama(base_url=settings.BASE_URL, model=settings.MODEL, temperature=0, num_predict=4096)
     __RAG_PROMPT = ChatPromptTemplate.from_messages([
         ("system", load_prompt("../prompts/rag_tools_explain.txt")),
+        ("system", load_prompt("../prompts/summarization_usage.txt")),
         MessagesPlaceholder(variable_name="history", optional=True),
         ("user", "Context: \n{context}\n\nQuestion: {question}")
     ])
-    __SMALL_TALK_PROMPT = ChatPromptTemplate.from_messages(
-        [
-            ("system", load_prompt("../prompts/talker_explain.txt")),
-            MessagesPlaceholder(variable_name="history", optional=True),
-            ("user", "{question}"),
-        ]
-    )
+    __SMALL_TALK_PROMPT = ChatPromptTemplate.from_messages([
+        ("system", load_prompt("../prompts/talker_explain.txt")),
+        ("system", load_prompt("../prompts/summarization_usage.txt")),
+        MessagesPlaceholder(variable_name="history", optional=True),
+        ("user", "{question}"),
+    ])
+    __SUMMARY_PROMPT = ChatPromptTemplate.from_messages([
+        ("system", load_prompt("../prompts/summarization.txt"))
+    ])
 
     # LCEL цепочки
     _RAG_CHAIN = (
@@ -56,6 +61,7 @@ class RAGAgent:
             | RunnableParallel(answer=__RAG_PROMPT | __LLM, docs=RunnableLambda(lambda x: x["docs"]))
     )
     _SMALL_TALK_CHAIN = __SMALL_TALK_PROMPT | __LLM
+    _SUMMARY_CHAIN = __SUMMARY_PROMPT | __LLM | StrOutputParser()
 
     def __init__(self):
         """Инициализатор."""
@@ -92,13 +98,14 @@ class RAGAgent:
         """
 
         history = RedisHistoryStore.get_last_full_msgs(session)
+        summary = RedisHistoryStore.get_summary(session)
         RedisHistoryStore.add_user_msg(session, question)
 
         full_answer = ""
         docs: List[Document] = []
 
         async for event in self._graph.astream_events(
-                State(history=history, question=question),
+                State(history=history, summary=summary, question=question),
                 version="v2",
         ):
             kind = event["event"]
@@ -115,7 +122,12 @@ class RAGAgent:
                 if isinstance(output, dict) and "docs" in output:
                     docs = output["docs"]
 
+        # Сохраняем ответ агента и обновляем summary для следующего turn'а
         RedisHistoryStore.add_ai_message(session, full_answer)
+        new_summary = await self._update_summary(summary, question, full_answer)
+        logger.info(f"[Summarization Complited] Result => {new_summary}")
+        RedisHistoryStore.save_summary(session, new_summary)
+
         yield {
             "type": "done",
             "sources": [
@@ -123,6 +135,29 @@ class RAGAgent:
                 for doc in docs
             ],
         }
+
+    async def _update_summary(self, summary: str, question: str, answer: str) -> str:
+        """
+        Обновить накопленный summary с учётом последнего turn'а.
+
+        Использует прогрессивную суммаризацию: LLM получает текущий summary
+        и новый диалог, возвращает обновлённую версию.
+
+        :param summary: текущий summary (пустая строка в начале разговора).
+        :param question: последний вопрос пользователя.
+        :param answer: последний ответ агента.
+        :return: обновлённый summary.
+        """
+
+        new_messages = f"Human: {question}\nAI: {answer}"
+        logger.info(
+            f"[Summarization Started] Last Summary => {summary if summary else []}\n"
+            f"Question => {question}\n"
+            f"Answer => {answer}"
+        )
+        return await self._SUMMARY_CHAIN.ainvoke(
+            {"summary": summary, "new_messages": new_messages}
+        )
 
     def _classify_node(self, state: State) -> dict:
         """Классифицирует намерение и сохраняет в state.intent."""
@@ -135,14 +170,18 @@ class RAGAgent:
     def _rag_node(self, state: State) -> dict:
         """Ищет релевантные чанки и формирует ответ через RAG."""
 
-        result = self._RAG_CHAIN.invoke({"question": state.question, "history": state.history})
+        result = self._RAG_CHAIN.invoke({
+            "question": state.question,
+            "history": state.history,
+            "summary": state.summary,
+        })
         return {"answer": result["answer"].content, "docs": result["docs"]}
 
     def _small_talk_node(self, state: State) -> dict:
         """Отвечает напрямую через LLM без обращения к базе знаний."""
 
         return {"answer": self._SMALL_TALK_CHAIN.invoke(
-            {"question": state.question, "history": state.history}
+            {"question": state.question, "history": state.history, "summary": state.summary}
         ).content, "docs": []}
 
     @staticmethod

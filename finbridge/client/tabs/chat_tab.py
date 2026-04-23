@@ -80,6 +80,7 @@ class ChatTab:
         yield "", history, session_id
 
         try:
+            # Потоковый запрос в API
             with httpx.stream(
                 "POST",
                 CHAT_INSIGHT_STREAM,
@@ -88,15 +89,19 @@ class ChatTab:
                 timeout=None,
             ) as response:
                 response.raise_for_status()
+                # Итерируемся по вновь пришедшим данным
                 for line in response.iter_lines():
                     if not line.startswith("data: "):
                         continue
+                    # У SSE срезаю `data: `
                     data = json.loads(line[6:])
 
+                    # Вывод обычного ввода
                     if data["type"] == "token":
                         history[-1]["content"] += data["content"]
                         yield "", history, session_id
 
+                    # Вывод источников
                     elif data["type"] == "done":
                         sources = data.get("sources", [])
                         if sources:
@@ -108,6 +113,7 @@ class ChatTab:
                             history[-1]["content"] += sources_text
                         yield "", history, session_id
 
+                    # Ошибка прокидывается отдельно
                     elif data["type"] == "error":
                         history[-1]["content"] += f"\n\nОшибка: {data['content']}"
                         yield "", history, session_id
