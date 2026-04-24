@@ -1,6 +1,8 @@
 """Настройки из .env. Атрошенко Б. С."""
 
 import os
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -24,6 +26,11 @@ class Settings(BaseSettings):
     AI_API_KEY: str = Field(description="Апи ключик к LLM провайдеру", default="ollama")
     BASE_URL: str = Field(description="УРЛ, на котором локально развёрнута ollama", default="http://localhost:11434")
     MODEL: str = Field(description="Модель используемая под капотом агента", default="deepseek-r1:1.5b")
+
+    # Конфиги Whisper
+    WHISPER_MODEL: Literal["tiny", "base", "small", "medium", "large"] = Field(
+        description="Размер используемой модели", default="base"
+    )
 
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000")

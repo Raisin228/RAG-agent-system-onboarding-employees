@@ -1,4 +1,43 @@
 services:
+
+#  api:
+#    build: .
+#    container_name: finbridge_api
+#    volumes:
+#      - .:/app
+#    ports:
+#      - "8000:8000"
+#    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+#    env_file: .env
+#    environment:
+#      - QDRANT_HOST=http://qdrant
+#      - BASE_URL=http://ollama:11434
+#      - REDIS_URL=redis://redis:6379
+#    depends_on:
+#      redis:
+#        condition: service_healthy
+#      qdrant:
+#        condition: service_started
+#    restart: on-failure
+
+#  frontend:
+#    build: .
+#    container_name: finbridge_frontend
+#    volumes:
+#      - .:/app
+#    ports:
+#      - "7860:7860"
+#    command: python client/frontend.py
+#    env_file: .env
+#    environment:
+#      - API_URL=http://api:8000
+#      - QDRANT_HOST=http://qdrant
+#      - BASE_URL=http://ollama:11434
+#      - REDIS_URL=redis://redis:6379
+#    depends_on:
+#      - api
+#    restart: on-failure
+
   qdrant:
     container_name: qdrant
     image: qdrant/qdrant:v1.17.0-unprivileged
@@ -6,6 +45,7 @@ services:
       - "6333:6333"
     volumes:
       - ./data/qdrant_storage:/qdrant/storage
+    restart: unless-stopped
 
   ollama:
     image: ollama/ollama:0.21.0
@@ -19,11 +59,11 @@ services:
   redis:
     image: redis:8.4.2-alpine3.22
     container_name: redis_db
-    restart: always
     ports:
       - "6379:6379"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: always

@@ -26,6 +26,7 @@ async def create_insight_stream(
 
     async def _generate() -> AsyncGenerator:
         """Асинхронный генератор для извлечения стриминга LLM."""
+        yield f"data: {json.dumps({"type": "transcript", "content": request.query}, ensure_ascii=False)}\n\n"
         try:
             async for event_data in agent.astream_tokens(request.query, session_id):
                 yield f"data: {json.dumps(event_data, ensure_ascii=False)}\n\n"
@@ -64,6 +65,7 @@ async def voice_insight_stream(file: UploadFile = File(...), session_id: str = D
     logger.info(f"[Voice Converter] транскрипция выполнена {repr(query)}")
 
     async def _generate() -> AsyncGenerator:
+        # Тут специально сразу же устанавливаем соединение. Чтоб клиент знал что мы выполняемся
         yield f"data: {json.dumps({"type": "transcript", "content": query}, ensure_ascii=False)}\n\n"
         try:
             async for event_data in agent.astream_tokens(query, session_id):

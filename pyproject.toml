@@ -7,7 +7,7 @@ package-mode = false
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.13,<4.0"
+python = ">=3.10,<4.0"
 qdrant-client = "1.17.1"
 fastapi = "0.135.3"
 langchain = "^1.2.15"
@@ -25,6 +25,7 @@ gradio = "^6.12.0"
 email-validator = "^2.3.0"
 langgraph = "^1.1.8"
 redis = "^7.4.0"
+faster-whisper = "^1.2.1"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
