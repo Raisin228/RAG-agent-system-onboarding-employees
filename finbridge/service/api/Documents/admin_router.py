@@ -118,6 +118,3 @@ async def delete_docs(docs_ids: List[RequiredDocsInteraction]) -> List[DeletedCh
     if any(map(lambda n: not (n or "").endswith(".md"), uniq_docs)):
         raise HTTPException(status_code=400, detail="Принимаются только .md файлы")
     return [DeletedChunkDoc(**statistic) for statistic in DocsDirectoryIngestion.erase_docs(uniq_docs)]
-
-# сделать ручку для переиндексации доков и загрузки существующих доков с ФС
-# Разобраться с проблемой роста числа чанков - кажется что это происходит при переинициализации

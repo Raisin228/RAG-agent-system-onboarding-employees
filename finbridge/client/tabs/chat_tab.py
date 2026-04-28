@@ -80,17 +80,11 @@ class ChatTab:
         :param session_id: id текущей сессии.
         """
 
-        try:
-            session_id = cls._ensure_session(session_id)
-        except Exception as e:
-            history = list(history) + [
-                {"role": "user", "content": message},
-                {"role": "assistant", "content": f"Ошибка сессии: {e}"},
-            ]
-            yield "", history, session_id
+        session_id, history = cls.__check_valid_session(history, session_id)
+        if not session_id:
             return
 
-        history = list(history) + [
+        history = history + [
             {"role": "user", "content": message},
             {"role": "assistant", "content": ""},
         ]
@@ -114,26 +108,13 @@ class ChatTab:
                     data = json.loads(line[6:])
 
                     # Вывод обычного ввода
-                    if data["type"] == "token":
+                    if data["type"] == "token":  # вынести TOKEN
                         history[-1]["content"] += data["content"]
                         yield "", history, session_id
-
-                    # Вывод источников
-                    elif data["type"] == "done":
-                        sources = data.get("sources", [])
-                        if sources:
-                            sources_text = "\n\n---\n**Источники:**\n"
-                            for i, src in enumerate(sources, 1):
-                                meta = src.get("metadata", {})
-                                name = meta.get("source", meta.get("title", f"Документ {i}"))
-                                sources_text += f"- {name}\n"
-                            history[-1]["content"] += sources_text
-                        yield "", history, session_id
-
-                    # Ошибка прокидывается отдельно
-                    elif data["type"] == "error":
-                        history[-1]["content"] += f"\n\nОшибка: {data['content']}"
-                        yield "", history, session_id
+                    else:
+                        temp = cls.__response_parser(data, history, session_id)
+                        if temp:
+                            yield temp
 
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
@@ -157,14 +138,8 @@ class ChatTab:
             yield "", history, session_id
             return
 
-        try:
-            session_id = cls._ensure_session(session_id)
-        except Exception as ex:
-            history = list(history) + [
-                {"role": "user", "content": "Голосовое сообщение"},
-                {"role": "assistant", "content": f"Ошибка получения сессии: {ex}"},
-            ]
-            yield None, history, session_id
+        session_id, history = cls.__check_valid_session(history, session_id)
+        if not session_id:
             return
 
         history = list(history) + [
@@ -197,23 +172,56 @@ class ChatTab:
                     elif data["type"] == "token":
                         history[-1]["content"] += data["content"]
                         yield None, history, session_id
-                    elif data["type"] == "done":
-                        sources = data.get("sources", [])
-                        if sources:
-                            sources_text = "\n\n---\n**Источники:**\n"
-                            for i, src in enumerate(sources, 1):
-                                meta = src.get("metadata", {})
-                                name = meta.get("source", meta.get("title", f"Документ {i}"))
-                                sources_text += f"- {name}\n"
-                            history[-1]["content"] += sources_text
-                        yield None, history, session_id
+                    else:
+                        temp = cls.__response_parser(data, history, session_id)
+                        if temp:
+                            yield temp
 
-                    elif data["type"] == "error":
-                        history[-1]["content"] += f"\nОшибка: {data['content']}"
-                        yield None, history, session_id
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
             yield None, history, session_id
         except Exception as ex:
             history[-1]["content"] = f"Непредвиденная ошибка: {ex}"
             yield None, history, session_id
+
+    @classmethod
+    def __check_valid_session(cls, history: list[dict], session: str) -> tuple[str, list]:
+        """
+        Проверка наличия и валидности сессии.
+
+        :param history: история диалога.
+        :param session: ид чат сессии.
+        :return: сессия, либо None.
+        """
+
+        try:
+            session_id = cls._ensure_session(session)
+        except Exception as e:
+            history = list(history) + [
+                {"role": "user", "content": "Запрос пользователя"},
+                {"role": "assistant", "content": f"Ошибка получения сессии: {e}"},
+            ]
+            return "", history
+        return session_id, history
+
+    @classmethod
+    def __response_parser(cls, data: dict, history: list[dict], session_id: str) -> tuple | None:
+        """Парсер ответов SSE стриминга."""
+
+        # Вывод источников
+        if data["type"] == "done":
+            sources = data.get("sources", [])
+            if sources:
+                sources_text = "\n\n---\n**Источники:**\n"
+                for i, src in enumerate(sources, 1):
+                    meta = src.get("metadata", {})
+                    name = meta.get("source", meta.get("title", f"Документ {i}"))
+                    sources_text += f"- {name}\n"
+                history[-1]["content"] += sources_text
+            return "", history, session_id
+
+        # Ошибка прокидывается отдельно
+        elif data["type"] == "error":
+            history[-1]["content"] += f"\n\nОшибка: {data['content']}"
+            return "", history, session_id
+        return None
