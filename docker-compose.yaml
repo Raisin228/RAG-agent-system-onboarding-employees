@@ -1,42 +1,42 @@
 services:
 
-#  api:
-#    build: .
-#    container_name: finbridge_api
-#    volumes:
-#      - .:/app
-#    ports:
-#      - "8000:8000"
-#    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
-#    env_file: .env
-#    environment:
-#      - QDRANT_HOST=http://qdrant
-#      - BASE_URL=http://ollama:11434
-#      - REDIS_URL=redis://redis:6379
-#    depends_on:
-#      redis:
-#        condition: service_healthy
-#      qdrant:
-#        condition: service_started
-#    restart: on-failure
+  #  api:
+  #    build: .
+  #    container_name: finbridge_api
+  #    volumes:
+  #      - .:/app
+  #    ports:
+  #      - "8000:8000"
+  #    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+  #    env_file: .env
+  #    environment:
+  #      - QDRANT_HOST=http://qdrant
+  #      - BASE_URL=http://ollama:11434
+  #      - REDIS_URL=redis://redis:6379
+  #    depends_on:
+  #      redis:
+  #        condition: service_healthy
+  #      qdrant:
+  #        condition: service_started
+  #    restart: on-failure
 
-#  frontend:
-#    build: .
-#    container_name: finbridge_frontend
-#    volumes:
-#      - .:/app
-#    ports:
-#      - "7860:7860"
-#    command: python client/frontend.py
-#    env_file: .env
-#    environment:
-#      - API_URL=http://api:8000
-#      - QDRANT_HOST=http://qdrant
-#      - BASE_URL=http://ollama:11434
-#      - REDIS_URL=redis://redis:6379
-#    depends_on:
-#      - api
-#    restart: on-failure
+  #  frontend:
+  #    build: .
+  #    container_name: finbridge_frontend
+  #    volumes:
+  #      - .:/app
+  #    ports:
+  #      - "7860:7860"
+  #    command: python client/frontend.py
+  #    env_file: .env
+  #    environment:
+  #      - API_URL=http://api:8000
+  #      - QDRANT_HOST=http://qdrant
+  #      - BASE_URL=http://ollama:11434
+  #      - REDIS_URL=redis://redis:6379
+  #    depends_on:
+  #      - api
+  #    restart: on-failure
 
   qdrant:
     container_name: qdrant
@@ -44,7 +44,7 @@ services:
     ports:
       - "6333:6333"
     volumes:
-      - ./data/qdrant_storage:/qdrant/storage
+      - ./data/qdrant_storage:/qdrant/storage # bind_mount т.к я хочу в разработке видеть локально что хранится в БД
     restart: unless-stopped
 
   ollama:
@@ -53,7 +53,7 @@ services:
     ports:
       - "11434:11434"
     volumes:
-      - ./ollama:/root/.ollama
+      - ./ollama:/root/.ollama # bind_mount т.к постоянно скачиваю / удаляю модели
     restart: unless-stopped
 
   redis:
@@ -62,8 +62,29 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 5s
       retries: 5
     restart: always
+
+  rabbit:
+    image: rabbitmq:management-alpine
+    container_name: rabbit_mq
+    ports:
+      - "5672:5672" # AMQP
+      - "15672:15672" # Web UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq # volumes потому что нужна стабильность. Не лезу в данные брокера
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER} # compose сам возьмёт секреты из .env
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  rabbitmq_data:
