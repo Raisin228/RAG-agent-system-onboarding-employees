@@ -32,9 +32,24 @@ class Settings(BaseSettings):
         description="Размер используемой модели", default="base"
     )
 
+    # Настройки RabbitMQ
+    RABBITMQ_USER: str = Field(description="Логин для входа в RabbitMQ")
+    RABBITMQ_PASS: str = Field(description="Пароль для входа в RabbitMQ")
+    RABBITMQ_HOST: str = Field(description="Хост для кролика", default="localhost")
+    RABBITMQ_PORT: int = Field(description="AMQP-порт для RabbitMQ", default=5672)
+
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000")
     GRADIO_PORT: int = Field(description="Порт для Градио")
+
+    @property
+    def m_queue_url(self):
+        """URL брокера сообщений."""
+
+        return (
+            f"amqp://{self.RABBITMQ_USER}:{self.RABBITMQ_PASS}"
+            f"@{self.RABBITMQ_HOST}:{self.RABBITMQ_PORT}/"
+        )
 
     model_config = SettingsConfigDict(env_file=DOTENV)
 

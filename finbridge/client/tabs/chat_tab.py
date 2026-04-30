@@ -32,14 +32,11 @@ class ChatTab:
             )
             clear_btn = gr.Button("Очистить", scale=1, variant="secondary")
 
-        with gr.Row():
-            audio_input = gr.Audio(
-                sources=["microphone"],
-                type="filepath",
-                label="Голосовой ввод",
-                scale=9
-            )
-            voice_btn = gr.Button("Отправить", scale=1, variant="primary")
+        audio_input = gr.Audio(
+            sources=["microphone"],
+            type="filepath",
+            label="Голосовой ввод (остановите запись — отправится автоматически)",
+        )
 
         msg_input.submit(
             fn=cls._send_message,
@@ -47,7 +44,7 @@ class ChatTab:
             outputs=[msg_input, chatbot, session_state],
         )
 
-        voice_btn.click(
+        audio_input.stop_recording(
             fn=cls._send_voice,
             inputs=[audio_input, chatbot, session_state],
             outputs=[audio_input, chatbot, session_state],
@@ -114,7 +111,8 @@ class ChatTab:
                     else:
                         temp = cls.__response_parser(data, history, session_id)
                         if temp:
-                            yield temp
+                            _, hist, sid = temp
+                            yield None, hist, sid
 
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
@@ -135,7 +133,7 @@ class ChatTab:
         """
 
         if not audio_path:
-            yield "", history, session_id
+            yield None, history, session_id
             return
 
         session_id, history = cls.__check_valid_session(history, session_id)
@@ -175,7 +173,8 @@ class ChatTab:
                     else:
                         temp = cls.__response_parser(data, history, session_id)
                         if temp:
-                            yield temp
+                            _, hist, sid = temp
+                            yield None, hist, sid
 
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
