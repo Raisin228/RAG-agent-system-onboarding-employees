@@ -7,7 +7,7 @@ from typing import Generator
 import gradio as gr
 import httpx
 
-from client.tabs.const import SESSION_URL, CHAT_INSIGHT_STREAM, VOICE_INSIGHT_STREAM
+from client.tabs.const import SESSION_URL, CHAT_INSIGHT_STREAM, VOICE_INSIGHT_STREAM, STREAM_URL
 from service.api.chat.dependensies import SESSION_HEADER
 
 
@@ -68,9 +68,9 @@ class ChatTab:
         return response.json()["user_identity"]
 
     @classmethod
-    def _send_message(cls, message: str, history: list[dict], session_id: str):
+    def _send_message(cls, message: str, history: list[dict], session_id: str) -> Generator:
         """
-        Стримить ответ агента через SSE и постепенно отдавать токены в gr.Chatbot.
+        Публикует текстовую задачу в RabbitMQ и стримит ответ из Redis SSE.
 
         :param message: текст вопроса от пользователя.
         :param history: текущая история диалога.
@@ -88,31 +88,16 @@ class ChatTab:
         yield "", history, session_id
 
         try:
-            # Потоковый запрос в API
-            with httpx.stream(
-                    "POST",
-                    CHAT_INSIGHT_STREAM,
-                    headers={SESSION_HEADER: session_id},
-                    json={"query": message},
-                    timeout=None,
-            ) as response:
-                response.raise_for_status()
-                # Итерируемся по вновь пришедшим данным
-                for line in response.iter_lines():
-                    if not line.startswith("data: "):
-                        continue
-                    # У SSE срезаю `data: `
-                    data = json.loads(line[6:])
+            response = httpx.post(
+                CHAT_INSIGHT_STREAM,
+                headers={SESSION_HEADER: session_id},
+                json={"query": message},
+                timeout=10,
+            )
+            response.raise_for_status()
+            task_id = response.json()["task_id"]
 
-                    # Вывод обычного ввода
-                    if data["type"] == "token":  # вынести TOKEN
-                        history[-1]["content"] += data["content"]
-                        yield "", history, session_id
-                    else:
-                        temp = cls.__response_parser(data, history, session_id)
-                        if temp:
-                            _, hist, sid = temp
-                            yield None, hist, sid
+            yield from cls._stream_sse(task_id, history, session_id, first_output="")
 
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
@@ -124,12 +109,11 @@ class ChatTab:
     @classmethod
     def _send_voice(cls, audio_path: str | None, history: list[dict], session_id: str) -> Generator:
         """
-        Отправляет аудио на транскрибацию и стримит ответ агента.
+        Публикует голосовую задачу в RabbitMQ и стримит ответ из Redis SSE.
 
         :param audio_path: путь к временному файлу Gradio.
         :param history: история диалога.
         :param session_id: id сессии.
-        :return: кортеж из 3х компонентов [поле ввода | история | сессия].
         """
 
         if not audio_path:
@@ -148,33 +132,19 @@ class ChatTab:
 
         try:
             filename = Path(audio_path).name
-            with open(audio_path, "rb") as file:
-                audio_bytes = file.read()
+            with open(audio_path, "rb") as f:
+                audio_bytes = f.read()
 
-            with httpx.stream(
-                    "POST",
-                    VOICE_INSIGHT_STREAM,
-                    headers={SESSION_HEADER: session_id},
-                    files={"file": (filename, audio_bytes, "audio/wav")},
-                    timeout=None
-            ) as response:
-                response.raise_for_status()
-                for line in response.iter_lines():
-                    if not line.startswith("data: "):
-                        continue
+            response = httpx.post(
+                VOICE_INSIGHT_STREAM,
+                headers={SESSION_HEADER: session_id},
+                files={"file": (filename, audio_bytes, "audio/wav")},
+                timeout=10,
+            )
+            response.raise_for_status()
+            task_id = response.json()["task_id"]
 
-                    data = json.loads(line[6:])
-                    if data["type"] == "transcript":
-                        history[-2]["content"] = f"🎤 {data["content"]}"
-                        yield None, history, session_id
-                    elif data["type"] == "token":
-                        history[-1]["content"] += data["content"]
-                        yield None, history, session_id
-                    else:
-                        temp = cls.__response_parser(data, history, session_id)
-                        if temp:
-                            _, hist, sid = temp
-                            yield None, hist, sid
+            yield from cls._stream_sse(task_id, history, session_id, first_output=None)
 
         except httpx.ConnectError:
             history[-1]["content"] = "Не удалось подключиться к серверу. Убедитесь, что FastAPI запущен."
@@ -182,6 +152,42 @@ class ChatTab:
         except Exception as ex:
             history[-1]["content"] = f"Непредвиденная ошибка: {ex}"
             yield None, history, session_id
+
+    @classmethod
+    def _stream_sse(
+            cls,
+            task_id: str,
+            history: list[dict],
+            session_id: str,
+            first_output: str | None,
+    ) -> Generator:
+        """
+        Подписывается на SSE-канал задачи и стримит токены в историю чата.
+
+        :param task_id: ID задачи из очереди.
+        :param history: текущая история диалога.
+        :param session_id: id сессии.
+        :param first_output: значение первого выхода (очистка поля ввода или аудио).
+        """
+
+        with httpx.stream("GET", f"{STREAM_URL}/{task_id}", timeout=None) as response:
+            response.raise_for_status()
+            for line in response.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data = json.loads(line[6:])
+
+                if data["type"] == "transcript":
+                    history[-2]["content"] = f"🎤 {data['content']}"
+                    yield first_output, history, session_id
+                elif data["type"] == "token":
+                    history[-1]["content"] += data["content"]
+                    yield first_output, history, session_id
+                else:
+                    temp = cls.__response_parser(data, history, session_id)
+                    if temp:
+                        _, hist, sid = temp
+                        yield first_output, hist, sid
 
     @classmethod
     def __check_valid_session(cls, history: list[dict], session: str) -> tuple[str, list]:
@@ -207,7 +213,6 @@ class ChatTab:
     def __response_parser(cls, data: dict, history: list[dict], session_id: str) -> tuple | None:
         """Парсер ответов SSE стриминга."""
 
-        # Вывод источников
         if data["type"] == "done":
             sources = data.get("sources", [])
             if sources:
@@ -219,8 +224,8 @@ class ChatTab:
                 history[-1]["content"] += sources_text
             return "", history, session_id
 
-        # Ошибка прокидывается отдельно
         elif data["type"] == "error":
             history[-1]["content"] += f"\n\nОшибка: {data['content']}"
             return "", history, session_id
+
         return None
