@@ -6,6 +6,7 @@
 Атрошенко Б. С.
 """
 
+import asyncio
 import logging
 import os
 
@@ -50,7 +51,9 @@ async def handle_voice_task(body: bytes) -> None:
             audio_bytes = f.read()
         os.unlink(task.filename)
 
-        query = WhisperTranscriber.transcribe(audio_bytes, task.filename)
+        # Whisper — синхронный CPU-bound код. asyncio.to_thread уходит в пул потоков,
+        # event loop остаётся свободным и фронт успевает подписаться на Redis до публикации transcript.
+        query = await asyncio.to_thread(WhisperTranscriber.transcribe, audio_bytes, task.filename)
         if not query:
             await result_store.publish_event(
                 task.task_id, {"type": "error", "content": "Не удалось распознать речь в аудиофайле"}
