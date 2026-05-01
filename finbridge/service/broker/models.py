@@ -27,7 +27,7 @@ class TextTask(_BaseTask):
 
 
 class VoiceTask(_BaseTask):
-    """Задача конвертации гс в текст."""
+    """Задача конвертации ГС в текст."""
 
     filename: str = Field(description="Имя буферного файла, в котором сохранено ГС.")
     t_type: TaskType = TaskType.VOICE

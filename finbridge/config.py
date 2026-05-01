@@ -13,10 +13,16 @@ class Settings(BaseSettings):
     """Здесь происходит валидация и агрегация всех ключей и базовых констант."""
 
     # Конфиги векторной БД
-    EMBEDDINGS_MODEL_NAME: str = Field(description="Модель используемая в качестве генерации embeddings.", min_length=3)
+    EMBEDDINGS_MODEL_NAME: str = Field(
+        description="Модель используемая в качестве генерации embeddings.",
+        min_length=3,
+        default="BAAI/bge-small-en"
+    )
     QDRANT_HOST: str = Field(description="Хост до контейнера с Qdrant", default="http://localhost")
     QDRANT_PORT: int = Field(description="Порт, на котором слушает Qdrant", default=6333)
-    QDRANT_COLLECTION_NAME: str = Field(description="Название основной коллекции документов", min_length=5)
+    QDRANT_COLLECTION_NAME: str = Field(
+        description="Название основной коллекции документов", min_length=5, default="finbridge_docs"
+    )
 
     # Конфиги Redis [TTL = 1час]
     REDIS_URL: str = Field(description="Урл для экземпляра Redis", default="redis://localhost:6379")
@@ -33,14 +39,14 @@ class Settings(BaseSettings):
     )
 
     # Настройки RabbitMQ
-    RABBITMQ_USER: str = Field(description="Логин для входа в RabbitMQ")
-    RABBITMQ_PASS: str = Field(description="Пароль для входа в RabbitMQ")
+    RABBITMQ_USER: str = Field(description="Логин для входа в RabbitMQ", default="guest")
+    RABBITMQ_PASS: str = Field(description="Пароль для входа в RabbitMQ", default="guest")
     RABBITMQ_HOST: str = Field(description="Хост для кролика", default="localhost")
     RABBITMQ_PORT: int = Field(description="AMQP-порт для RabbitMQ", default=5672)
 
     # Настройки Frontend
     API_URL: str = Field(description="Ссылка на UI-чат", default="http://localhost:8000")
-    GRADIO_PORT: int = Field(description="Порт для Градио")
+    GRADIO_PORT: int = Field(description="Порт для Градио", default=7860)
 
     @property
     def m_queue_url(self):
