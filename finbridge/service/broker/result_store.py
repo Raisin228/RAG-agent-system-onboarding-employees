@@ -54,10 +54,10 @@ class RedisResultStore:
         channel = f"{_CHANNEL_PREFIX}{task_id}"
         # Отдельный клиент на каждый SSE-запрос — pubsub требует выделенного соединения
         client = await aio_redis.from_url(settings.REDIS_URL, decode_responses=True)
-        pubsub = client.pubsub()
-        await pubsub.subscribe(channel)
+        pub_sub = client.pubsub()
+        await pub_sub.subscribe(channel)
         try:
-            async for message in pubsub.listen():
+            async for message in pub_sub.listen():
                 if message["type"] != "message":
                     continue
                 raw: str = message["data"]
@@ -65,8 +65,8 @@ class RedisResultStore:
                 if json.loads(raw).get("type") in ("done", "error"):
                     break
         finally:
-            await pubsub.unsubscribe(channel)
-            await pubsub.aclose()
+            await pub_sub.unsubscribe(channel)
+            await pub_sub.aclose()
             await client.aclose()
 
     async def close(self) -> None:

@@ -37,7 +37,13 @@ class RabbitMQConsumer:
             text_handler: MessageHandler,
             voice_handler: MessageHandler,
     ) -> None:
-        """Подписывается на обе очереди и запускает прослушку."""
+        """
+        Подписывается на обе очереди и запускает прослушку.
+
+        :param text_handler: обработчик, который сработает при задаче на генерацию исходя из текстового вопроса.
+        :param voice_handler: обработчик, голосового ввода.
+        :return:
+        """
 
         # 2ой раз я не создаю повторно обменник и очередь. Если очереди уже есть, а они есть, т.к их
         # создали в publisher, подключаюсь к ним.
@@ -76,3 +82,6 @@ class RabbitMQConsumer:
         if self._connection:
             await self._connection.close()
             logger.info("[Consumer] соединение закрыто")
+
+
+consumer = RabbitMQConsumer()

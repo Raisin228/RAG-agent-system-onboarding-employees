@@ -5,7 +5,11 @@ from pydantic import BaseModel, Field
 class InsightRequest(BaseModel):
     """Вопрос боту в чат."""
 
-    query: str = Field(description="Вопрос пользователя к базе знаний компании", min_length=3)
+    query: str = Field(
+        description="Вопрос пользователя к базе знаний компании",
+        min_length=3,
+        default="Как получить рабочее оборудование?"
+    )
 
 
 class GenerateSession(BaseModel):
@@ -31,4 +35,12 @@ class InsightResponse(BaseModel):
     sources: list[SourceDocument] = Field(
         description="Список документов из базы знаний, на которые опирался агент",
         default_factory=list,
+    )
+
+
+class TaskAccepted(BaseModel):
+    """Задачу поставили в очередь - возвращаю id задачи."""
+
+    task_id: str = Field(
+        description="ID задачи для дальнейшего стриминга ответов.", default="01b97f1c-9328-4316-b0cd-c4cb09116d67"
     )
