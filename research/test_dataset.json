@@ -1,0 +1,518 @@
+{
+  "version": "1.0",
+  "description": "Тестовый датасет для оценки RAG-агента FinBridge. 50 вопросов разного характера.",
+  "categories": {
+    "small_talk": "Бытовая беседа, не требует обращения к базе знаний",
+    "easy_factual": "Простые фактические вопросы, ответ прямо в документах",
+    "medium": "Требуют прочтения конкретного раздела документа",
+    "complex": "Синтез информации из нескольких мест или разделов",
+    "hallucination_trap": "Информации нет в документах — правильный ответ: «не знаю»"
+  },
+  "scoring_rules": {
+    "relevance_score": "Доля ожидаемых документов, найденных в retrieved docs (Recall). Для small_talk = null.",
+    "factual_score": "Доля key_facts, присутствующих в ответе агента. Для small_talk = 1.0 если ответ непустой.",
+    "hallucination": "Для hallucination_trap: ответ конкретными фактами без оговорки о недоступности = галлюцинация. Для остальных: factual_score=0 при длинном уверенном ответе = вероятная галлюцинация."
+  },
+  "questions": [
+    {
+      "id": 1,
+      "question": "Привет! Как тебя зовут?",
+      "category": "small_talk",
+      "expected_intent": "small_talk",
+      "expert_answer": "Любое приветствие и представление себя как ассистента FinBridge",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Проверяем, что агент не идёт в RAG и отвечает как small_talk"
+    },
+    {
+      "id": 2,
+      "question": "Что ты умеешь делать?",
+      "category": "small_talk",
+      "expected_intent": "small_talk",
+      "expert_answer": "Описание возможностей: помогаю с вопросами о компании, документах, процессах",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Классификатор должен распознать как small_talk"
+    },
+    {
+      "id": 3,
+      "question": "Напиши мне короткий стишок про программирование",
+      "category": "small_talk",
+      "expected_intent": "small_talk",
+      "expert_answer": "Любой стишок или отказ с вежливым объяснением",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Творческий запрос — проверяем small_talk ветку"
+    },
+    {
+      "id": 4,
+      "question": "Сколько будет 123 умножить на 4?",
+      "category": "small_talk",
+      "expected_intent": "small_talk",
+      "expert_answer": "492",
+      "key_facts": ["492"],
+      "source_docs": [],
+      "notes": "Математика — должна идти в small_talk"
+    },
+    {
+      "id": 5,
+      "question": "Хорошая погода сегодня, правда?",
+      "category": "small_talk",
+      "expected_intent": "small_talk",
+      "expert_answer": "Любой светский ответ про погоду",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Типичный small_talk"
+    },
+    {
+      "id": 6,
+      "question": "Сколько всего сотрудников работает в FinBridge?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "В FinBridge 240 человек: 130 инженеров, 35 продактов и аналитиков, остальные — маркетинг, HR, финансы и юристы.",
+      "key_facts": ["240"],
+      "source_docs": ["first_day_checklist.md"],
+      "notes": "Прямой факт из первого абзаца first_day_checklist.md"
+    },
+    {
+      "id": 7,
+      "question": "Где находится московский офис FinBridge?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Московский офис FinBridge расположен в Башне Федерация, 28 этаж.",
+      "key_facts": ["Башня Федерация", "28 этаж"],
+      "source_docs": ["first_day_checklist.md"],
+      "notes": "Конкретный адрес офиса"
+    },
+    {
+      "id": 8,
+      "question": "Какой URL у GitLab в компании?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "GitLab доступен по адресу gitlab.finbridge.io, вход через SSO Okta.",
+      "key_facts": ["gitlab.finbridge.io"],
+      "source_docs": ["access_requests.md"],
+      "notes": "URL системы из таблицы стандартных доступов"
+    },
+    {
+      "id": 9,
+      "question": "Сколько дней ежегодного оплачиваемого отпуска предусмотрено по Трудовому кодексу?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "По Трудовому кодексу РФ предусмотрено 28 календарных дней ежегодного оплачиваемого отпуска. В FinBridge сверх этого предоставляются дополнительные дни в зависимости от стажа.",
+      "key_facts": ["28"],
+      "source_docs": ["vacation_and_sick_leave.md"],
+      "notes": "Прямая цитата из vacation_and_sick_leave.md"
+    },
+    {
+      "id": 10,
+      "question": "Какой формат работы принят в FinBridge?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "В FinBridge действует гибридный формат: 2 дня в офисе (вторник и четверг), остальные 3 дня — удалёнка.",
+      "key_facts": ["вторник", "четверг", "2 дня"],
+      "source_docs": ["remote_work_policy.md"],
+      "notes": "Ключевые факты о гибридном графике"
+    },
+    {
+      "id": 11,
+      "question": "Сколько sick days есть у каждого сотрудника в год?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "У каждого сотрудника есть 5 sick days в год — дни болезни без официального больничного листа и без вычета из отпуска.",
+      "key_facts": ["5"],
+      "source_docs": ["vacation_and_sick_leave.md"],
+      "notes": "Конкретное число sick days"
+    },
+    {
+      "id": 12,
+      "question": "Кто такой Кирилл Воронов?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Кирилл Воронов (@kirill.voronov) — Engineering Manager для всех продуктовых команд. Проводит 1-on-1 с новыми сотрудниками в конце первой недели. Weekly Engineering All-Hands — каждую среду в 18:00 МСК.",
+      "key_facts": ["Engineering Manager", "Кирилл Воронов"],
+      "source_docs": ["team_structure.md"],
+      "notes": "Роль EM из раздела взаимодействия команд"
+    },
+    {
+      "id": 13,
+      "question": "Сколько бюджета выделяется на обучение в год?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Каждому сотруднику выделяется 120 000 рублей в год на профессиональное развитие. Для стажёров и сотрудников на испытательном сроке — 60 000 рублей.",
+      "key_facts": ["120 000", "60 000"],
+      "source_docs": ["learning_budget.md", "first_day_checklist.md"],
+      "notes": "Лимит обучения — key fact"
+    },
+    {
+      "id": 14,
+      "question": "В какой Slack-канал писать по IT-вопросам?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "По IT-вопросам и запросам на доступы — #it-support в Slack. Среднее время ответа — около 12 минут.",
+      "key_facts": ["#it-support"],
+      "source_docs": ["access_requests.md", "first_day_checklist.md"],
+      "notes": "Базовый канал поддержки"
+    },
+    {
+      "id": 15,
+      "question": "Что такое SEV-1 и каков целевой RTO?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "SEV-1 — полный сервисный сбой, продакшн недоступен (например, процессинг не принимает транзакции). Цель по времени восстановления (RTO) — 30 минут.",
+      "key_facts": ["30 минут", "SEV-1"],
+      "source_docs": ["incident_response.md"],
+      "notes": "Уровень инцидента и RTO — часто запрашиваемые данные"
+    },
+    {
+      "id": 16,
+      "question": "Сколько аппрувов нужно для мержа MR?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Для мержа MR нужно минимум 2 аппрува от коллег из команды. Один из ревьюеров должен быть senior или lead.",
+      "key_facts": ["2"],
+      "source_docs": ["git_flow.md"],
+      "notes": "Конкретное число аппрувов"
+    },
+    {
+      "id": 17,
+      "question": "Кто тимлид команды Payments Core?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Тимлид команды Payments Core — Андрей Ковалёв (@andrey.kovalev). Стендап команды ежедневно в 10:15 МСК.",
+      "key_facts": ["Андрей Ковалёв", "andrey.kovalev"],
+      "source_docs": ["team_structure.md"],
+      "notes": "Конкретный тимлид из структуры команд"
+    },
+    {
+      "id": 18,
+      "question": "Какова зарплатная вилка для G3 инженера в Москве?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Зарплатная вилка для G3 (Middle) инженера в Москве: 180 000 – 260 000 рублей gross (до вычета НДФЛ).",
+      "key_facts": ["180 000", "260 000"],
+      "source_docs": ["grade_system.md"],
+      "notes": "Конкретная вилка из таблицы грейдов"
+    },
+    {
+      "id": 19,
+      "question": "Каковы core hours для удалённой работы?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Core hours — с 11:00 до 17:00 МСК. В это время сотрудник должен быть на связи в Slack.",
+      "key_facts": ["11:00", "17:00"],
+      "source_docs": ["remote_work_policy.md"],
+      "notes": "Рабочие часы при удалёнке"
+    },
+    {
+      "id": 20,
+      "question": "Какой антивирус используется на корпоративных устройствах?",
+      "category": "easy_factual",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "На всех корпоративных устройствах используется CrowdStrike Falcon. Выдаётся IT-отделом. Скачать установщик — запросить в #it-support.",
+      "key_facts": ["CrowdStrike", "Falcon"],
+      "source_docs": ["security_policy.md"],
+      "notes": "Корпоративный антивирус"
+    },
+    {
+      "id": 21,
+      "question": "Как запросить доступ к ArgoCD для деплоев?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Написать в Slack-канал #it-support по шаблону: «Прошу выдать доступ к ArgoCD для [имя.фамилия]. Обоснование: [1-2 предложения]. Согласовано с тимлидом: @имя_тимлида». Срок ответа — менее 1 рабочего дня.",
+      "key_facts": ["#it-support", "ArgoCD", "тимлид"],
+      "source_docs": ["access_requests.md"],
+      "notes": "Стандартная процедура запроса доступа через Slack"
+    },
+    {
+      "id": 22,
+      "question": "Как оформить ежегодный отпуск на 7 рабочих дней?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "1. Уведомить тимлида за 2 недели (устно или в Slack). 2. Написать в #hr-requests: «Запрос на отпуск с [дата] по [дата], [количество] к.д.». 3. HR создаёт приказ, придёт на подпись через Диадок. 4. Поставить статус в Google Calendar. 5. Настроить автоответ в почте и Slack. 6. Передать задачи коллеге.",
+      "key_facts": ["2 недели", "#hr-requests", "Google Calendar"],
+      "source_docs": ["vacation_and_sick_leave.md"],
+      "notes": "Плановый отпуск >= 5 дней — полная процедура"
+    },
+    {
+      "id": 23,
+      "question": "Как именуются ветки задач в GitLab?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Формат: <веха>/<тип>/<логин_разработчика>/<номер_задачи_Jira>. Типы: feature, bugfix, hotfix, refactor, chore. Пример: 26.100/feature/bs.atroshenko/PAY-1238765.",
+      "key_facts": ["feature", "bugfix", "Jira", "логин"],
+      "source_docs": ["git_flow.md"],
+      "notes": "Правила именования веток — важно для новичков"
+    },
+    {
+      "id": 24,
+      "question": "Как подать заявку на повышение грейда?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Шаг 1: заполнить самооценку в Confluence по шаблону (grade-review-template). Шаг 2: ревью с тимлидом. Шаг 3: грейд-комитет (раз в квартал). Шаг 4: оформление HR. Подавать не чаще одного раза в 6 месяцев.",
+      "key_facts": ["самооценка", "6 месяцев", "комитет", "тимлид"],
+      "source_docs": ["grade_system.md"],
+      "notes": "Полный процесс грейд-ревью"
+    },
+    {
+      "id": 25,
+      "question": "Что нужно настроить чтобы работать из дома?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "1. Корпоративный VPN — без него внутренние сервисы недоступны (инструкция в vpn_setup.md). 2. Подключение к удалённому dev-серверу через SSH или RDP (инструкция в dev_environment_setup.md). 3. При необходимости — развернуть тестовый стенд через fb-stand.",
+      "key_facts": ["VPN", "SSH", "dev-сервер"],
+      "source_docs": ["remote_work_policy.md"],
+      "notes": "Практические шаги для удалённой работы"
+    },
+    {
+      "id": 26,
+      "question": "Как получить временный доступ к production базе данных для отладки?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Создать тикет в Jira: проект SEC, тип «Запрос доступа». Указать: какая БД, какие таблицы, зачем, на какой срок. DBA выдаёт временный read-only DSN с истечением через 8 часов. Подключение только через VPN и бастион-хост (bastion.finbridge.io).",
+      "key_facts": ["Jira", "SEC", "8 часов", "bastion.finbridge.io"],
+      "source_docs": ["access_requests.md"],
+      "notes": "Процедура доступа к prod БД — критически важно для новичков"
+    },
+    {
+      "id": 27,
+      "question": "Что делать если заболел и не могу выйти на работу?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "При лёгком недомогании (1-2 дня): написать тимлиду в первый день — это засчитается как sick day. У каждого есть 5 sick days в год. Если нужен официальный больничный: обратиться к врачу, написать тимлиду и в #hr-requests. Оплата первых 3 дней — 100% за счёт FinBridge, с 4-го — ФСС.",
+      "key_facts": ["5", "#hr-requests", "тимлид", "100%"],
+      "source_docs": ["vacation_and_sick_leave.md"],
+      "notes": "Практический ответ на бытовую ситуацию"
+    },
+    {
+      "id": 28,
+      "question": "Как попасть на конференцию HighLoad++ за счёт компании?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Написать заявку в Slack-канале #learning по шаблону: что хочешь, сколько стоит, как это поможет в работе. Заявки до 15 000 ₽ согласует тимлид, выше — руководитель направления. Срок рассмотрения: 1-3 рабочих дня. HighLoad++ стоит примерно 35 000 ₽.",
+      "key_facts": ["#learning", "15 000", "1-3"],
+      "source_docs": ["learning_budget.md"],
+      "notes": "Процедура оплаты конференции"
+    },
+    {
+      "id": 29,
+      "question": "После мержа в rc/26.100 нужно ли что-то делать ещё если есть ветка rc/26.200?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Да, обязательно. Нужно прокинуть изменения в следующие релизные ветки: создать MR из rc/26.100 в rc/26.200, затем rc/26.200 в rc/26.300, и так по цепочке. Иначе фикс или фича пропадёт в следующем релизе. В GitLab это делается через кнопку «Create merge request» после мержа.",
+      "key_facts": ["rc/26.200", "прокин", "следующ", "релиз"],
+      "source_docs": ["git_flow.md"],
+      "notes": "Критически важный шаг, который часто забывают"
+    },
+    {
+      "id": 30,
+      "question": "Кто отвечает за информационную безопасность в FinBridge?",
+      "category": "medium",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Security Officer — Игорь Савченко. Slack: @igor.savchenko, email: security@finbridge.io, телефон: +7 (926) 555-98-76. Время реакции Security-команды: 15 минут в рабочее время, 60 минут в нерабочее.",
+      "key_facts": ["Игорь Савченко", "security@finbridge.io", "15 минут"],
+      "source_docs": ["security_policy.md", "first_day_checklist.md", "incident_response.md"],
+      "notes": "Контакт Security Officer — важно знать"
+    },
+    {
+      "id": 31,
+      "question": "Опиши полный алгоритм реагирования на SEV-1 инцидент",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "1. Обнаружение: ответить на алерт в #incidents, написать «@oncall инцидент принят» с указанием severity. 2. Создать тред по шаблону, назначить Incident Commander. 3. Митигация (цель — прекратить ущерб): откатить деплой (fb-deploy rollback), включить feature flag, масштабировать поды. 4. Коммуникация: обновления в #incidents каждые 15 минут. 5. Восстановление: проверить метрики в Grafana (payments-sli dashboard). 6. Закрыть инцидент в #incidents. 7. Постмортем в течение 48 часов. RTO = 30 минут.",
+      "key_facts": ["#incidents", "30 минут", "постмортем", "48 часов", "Grafana", "IC"],
+      "source_docs": ["incident_response.md"],
+      "notes": "Комплексный ответ по всему алгоритму инцидента"
+    },
+    {
+      "id": 32,
+      "question": "Расскажи всё про команду Data & Analytics: состав, лидер, системы, каналы",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Команда Data & Analytics: 14 человек (5 data engineer, 3 data analyst, 2 BI, 2 аналитика продукта, 1 продакт, 1 QA). Тимлид: Екатерина Фёдорова (@ekaterina.fedorova). Ключевые системы: ClickHouse, Airflow, dbt, Superset (bi.finbridge.io). Стендап ежедневно 10:30 МСК. Slack-каналы: #team-data, #data-questions.",
+      "key_facts": ["Екатерина Фёдорова", "14", "ClickHouse", "#team-data"],
+      "source_docs": ["team_structure.md"],
+      "notes": "Полная информация о конкретной команде"
+    },
+    {
+      "id": 33,
+      "question": "Как работает безопасность кода в FinBridge — SAST, секреты, ревью?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Все секреты хранятся в HashiCorp Vault (vault.finbridge.io), не в коде. Pre-commit хук detect-secrets блокирует коммит секретов. Для всех MR в finbridge-core автоматически: SAST через semgrep (SQL-инъекции, XSS, path traversal), dependency scan через trivy (CVE), secret scan через gitleaks. Если сканер нашёл проблему — MR нельзя смержить до исправления.",
+      "key_facts": ["Vault", "detect-secrets", "semgrep", "trivy"],
+      "source_docs": ["security_policy.md"],
+      "notes": "Комплекс мер безопасности кода"
+    },
+    {
+      "id": 34,
+      "question": "Каковы критерии оценки инженера на грейд-комитете?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Для инженерных направлений: Техническая сложность задач — 30% (уровень задач S/M/L/XL, RFC). Качество кода — 20% (баги после релиза, результаты ревью, покрытие тестами). Самостоятельность — 20% (декомпозиция, принятие решений). Влияние на команду — 15% (менторство, ревью чужих MR, онбординг). Развитие — 15% (сертификации, выступления).",
+      "key_facts": ["30%", "20%", "15%", "менторство"],
+      "source_docs": ["grade_system.md"],
+      "notes": "Весовые коэффициенты критериев оценки"
+    },
+    {
+      "id": 35,
+      "question": "Расскажи про все корпоративные образовательные платформы — что доступно бесплатно?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Бесплатно для всех сотрудников (не тратит личный бюджет): Coursera for Teams — напиши в #learning; O'Reilly Learning — finbridge.oreilly.com через SSO; Stepik — через #learning; LeetCode Premium — 15 лицензий, через #learning; Pluralsight — finbridge.pluralsight.com через SSO; Miro Education — уже у всех через корпоративный Miro.",
+      "key_facts": ["Coursera", "O'Reilly", "Stepik", "#learning"],
+      "source_docs": ["learning_budget.md"],
+      "notes": "Полный список бесплатных платформ"
+    },
+    {
+      "id": 36,
+      "question": "Как работает эскалация при инциденте если дежурный не отвечает на PagerDuty?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Если дежурный не ответил на звонок PagerDuty в течение 5 минут — автоматическая эскалация на тимлида. Если тимлид не ответил ещё через 5 минут — эскалация на CTO Артёма Красильникова (@artem.krasilnikov, телефон: +7 (903) 812-33-21).",
+      "key_facts": ["5 минут", "тимлид", "CTO", "Артём Красильников"],
+      "source_docs": ["incident_response.md"],
+      "notes": "Цепочка эскалации — критично знать"
+    },
+    {
+      "id": 37,
+      "question": "Что происходит если нарушить политику информационной безопасности?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Нарушение политики безопасности — основание для блокировки доступов и дисциплинарных мер вплоть до увольнения. Если статус NON-COMPLIANT держится более 7 дней — VPN-доступ блокируется автоматически. FinBridge — PCI DSS Level 1, требования строже обычных компаний.",
+      "key_facts": ["увольнения", "7 дней", "VPN", "PCI DSS"],
+      "source_docs": ["security_policy.md"],
+      "notes": "Последствия нарушений безопасности"
+    },
+    {
+      "id": 38,
+      "question": "Расскажи про традиции и клубы по интересам в FinBridge",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Клубы: #club-running (беговой, среды и субботы, Парк Горького), #club-boardgames (настолки, пятница 18:30), #club-bookworms (книжный, раз в 2 недели), #club-ctf (CTF-соревнования), #club-english (английский с носителем, четверги 17:00). Традиции: Demo Day (последняя пятница месяца с пиццей), Hack Friday (первая пятница квартала), Welcome Lunch с CTO в первую неделю.",
+      "key_facts": ["Demo Day", "Hack Friday", "running", "клуб"],
+      "source_docs": ["first_day_checklist.md"],
+      "notes": "Корпоративная культура — комплексный вопрос"
+    },
+    {
+      "id": 39,
+      "question": "Чем отличается грейд G1 от G2 и как быстро можно перейти с G1 на G2?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "G1 (Junior) — выполняет задачи под руководством ментора, учится работать по стандартам. G2 (Junior+) — самостоятельно выполняет типовые задачи, понимает архитектуру своего сервиса, участвует в код-ревью. Обычно заявку подают не чаще раза в 6 месяцев, но для перехода G1→G2 можно инициировать уже через 3 месяца, если сотрудник явно перерос уровень.",
+      "key_facts": ["G1", "G2", "3 месяца", "6 месяцев"],
+      "source_docs": ["grade_system.md"],
+      "notes": "Сравнение грейдов и исключение для G1→G2"
+    },
+    {
+      "id": 40,
+      "question": "Как правильно работать с секретами и паролями в FinBridge?",
+      "category": "complex",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Все секреты (API-ключи, пароли БД, токены) хранятся в HashiCorp Vault (vault.finbridge.io). Пароли — в корпоративном 1Password Business (запросить в #it-support). Никогда не коммитить секреты в код — есть pre-commit хук detect-secrets. Если закоммитил — немедленно написать в #security и отозвать скомпрометированный ключ. Не хранить в текстовых файлах, мессенджерах, заметках.",
+      "key_facts": ["Vault", "1Password", "#security", "detect-secrets"],
+      "source_docs": ["security_policy.md"],
+      "notes": "Комплексный вопрос про управление секретами"
+    },
+    {
+      "id": 41,
+      "question": "Сколько кофеварок в московском офисе FinBridge?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Информация о количестве кофеварок в офисе отсутствует в корпоративных документах.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Ловушка на галлюцинацию — такой инфы нет ни в одном документе"
+    },
+    {
+      "id": 42,
+      "question": "Какой день рождения у CTO Артёма Красильникова?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "День рождения CTO не указан в корпоративных документах.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Персональные данные, которых нет в документах"
+    },
+    {
+      "id": 43,
+      "question": "Какова годовая выручка компании FinBridge?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Финансовые показатели компании (выручка, прибыль) отсутствуют в корпоративных документах для сотрудников.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Финансовые данные — не в HR/onboarding документах"
+    },
+    {
+      "id": 44,
+      "question": "Есть ли у FinBridge корпоративный самолёт для командировок?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Информация о корпоративном самолёте отсутствует в документах компании.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Нелепый вопрос на галлюцинацию"
+    },
+    {
+      "id": 45,
+      "question": "Какой штраф за опоздание на работу?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "В корпоративных документах FinBridge нет информации о штрафах за опоздания. В документах описана гибридная система работы без указания штрафных санкций.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Штрафов нет в документах; правильный ответ — «нет информации» или «штрафов нет»"
+    },
+    {
+      "id": 46,
+      "question": "Какой размер страхового покрытия ДМС в FinBridge?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Конкретный размер покрытия ДМС не указан в документах. В first_day_checklist.md упомянуто, что про ДМС рассказывают на welcome-сессии с HR в 11:00 в первый день.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "ДМС упоминается, но без суммы — ловушка на изобретение числа"
+    },
+    {
+      "id": 47,
+      "question": "Как зовут главного бухгалтера FinBridge?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Имя главного бухгалтера не указано в доступных корпоративных документах.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Роль главбуха не фигурирует в onboarding документах"
+    },
+    {
+      "id": 48,
+      "question": "На каком этаже находится столовая в московском офисе?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Информация о столовой в корпоративных документах отсутствует. Известно, что спортзал находится на 28 этаже (там же, где офис), работает с 7:00 до 22:00.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Спортзал есть в документах, столовая — нет. Ловушка на близкую, но неверную тему"
+    },
+    {
+      "id": 49,
+      "question": "Сколько составляет оклад в белградском офисе в евро для G4?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Конкретные суммы в евро для Белграда не указаны в документах. Есть только сноска: для Белграда применяется пересчёт по внутреннему курсу от московских вилок.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Факт о 'пересчёте по курсу' есть, но конкретной суммы нет — ловушка на изобретение числа"
+    },
+    {
+      "id": 50,
+      "question": "Есть ли в FinBridge корпоративный детский сад для детей сотрудников?",
+      "category": "hallucination_trap",
+      "expected_intent": "knowledge_base",
+      "expert_answer": "Информация о корпоративном детском саде отсутствует в документах компании.",
+      "key_facts": [],
+      "source_docs": [],
+      "notes": "Такой льготы нет в документах — ловушка на изобретение льготы"
+    }
+  ]
+}
